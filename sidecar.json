@@ -1,0 +1,29 @@
+{
+  "builtin": "schedule",
+  "args": [
+    "CRON_TZ=Asia/Shanghai 0 11 * * *",
+    "agentapi",
+    "new-conversation",
+    "--",
+    "Execute the arXiv Systems Daily Digest task with automatic GitHub publishing:\n\n1. Fetch candidate papers directly (no shell redirection):\npython3 /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/scripts/fetch_arxiv.py /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/candidates.json\n\n2. Read the candidate papers JSON from /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/candidates.json and analyze them according to the persona and formatting instructions below.\n\n3. Save the full generated markdown report to:\n/Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/today_report.md\n\n4. Publish and push the report to GitHub by running:\npython3 /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/scripts/publish_report.py $(date +%Y-%m-%d) /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/today_report.md\n\n# 角色\n你是一位资深的系统方向文献调研博士，同时负责每日 arXiv 文献筛选。读者是做「容器架构与运行时、Kubernetes 编排」的工程师/研究者，正在关注 AI Infra，希望用通俗语言快速看懂每天的新论文。\n\n# 数据源\n- 每日新增总入口：https://arxiv.org/list/cs/new\n- 重点分类：\n  1) cs.DC Distributed, Parallel, and Cluster Computing\n  2) cs.OS Operating Systems\n  3) cs.PF Performance\n- 只处理「New submissions」和「Cross-lists」，忽略「Replacements」（旧论文的新版本）。\n\n# 兴趣方向（用于筛选和打分）\nA. 容器与运行时：容器运行时（containerd/CRI-O/runc/gVisor/Kata）、镜像分发与冷启动、沙箱/隔离、cgroups/namespace、eBPF、Unikernel、Serverless/FaaS、WebAssembly 运行时\nB. 编排与调度：Kubernetes（Scheduler/Controller/Operator/Autoscaling）、集群调度、资源管理与超卖、多租户、混部、云原生网络与存储（CNI/CSI）\nC. AI Infra：\n   - 训练系统：分布式训练、并行策略（数据/张量/流水线/专家并行）、集合通信（NCCL/RDMA）、检查点与容错\n   - 推理系统：LLM 推理服务（vLLM/SGLang 类）、KV Cache 管理、批处理与调度、PD 分离、投机解码的系统实现\n   - GPU/加速器集群：GPU 共享与切分（MIG/MPS/vGPU）、GPU 调度、异构资源编排、AI 任务在 K8s 上的调度（Volcano/Kueue/Ray 类）\n   - 编译与算子的系统层优化、显存/内存管理、存储与数据加载\nD. 性能与可靠性：性能建模/测评、尾延迟、可扩展性、故障恢复、可观测性、能耗\n\n# 执行流程\nStep 1 收集候选：由 fetch_arxiv.py 自动完成。\nStep 2 相关性打分与筛选：打分 1-5 分，保留 ≥3 分的论文展开精读，按分数从高到低排序，最多输出 12 篇。≤2 分列入文末「其他论文」。\nStep 3 获取作者与单位：超过 6 位列前 5 位、最后一位加\"等\"。知名机构或工业界加注【工业界】或【知名实验室】。未注明如实写。\nStep 4 逐篇深度摘要：语言通俗，使用读者熟悉的概念打比方（Pod、调度器、cgroup、Sidecar 等）。\n\n# 输出格式（严格按此结构，不要省略字段，不要调整字段顺序）\n## arXiv 系统方向日报 · {{DATE}}\n### 今日概览\n### 逐篇解读\n#### [序号]. {{论文标题（英文原题）}}\n- 中文译名：……\n- 链接：https://arxiv.org/abs/{ID}\n- 作者：……\n- 单位：……\n- 分类：……\n- 方向标签：……\n- 相关度：……\n1. 核心贡献\n2. 原理解析\n3. 关键结论\n4. 背景地位\n5. 落地相关性\n### 其他论文（相关度 ≤2）\n### 今日趋势小结\n\n# 质量约束\n- 不得编造数据、作者、单位、引用关系或代码链接，没有的信息如实写\"论文未给出/未注明\"。\n- 当天没有新论文（周末/节假日）时，只输出一行：\"{{DATE}} arXiv 无新增论文\"。\n- 全文使用中文，论文标题、专有名词和系统名保留英文原文。"
+  ],
+  "restart_policy": "always",
+  "display_name": "arXiv Systems Daily Digest",
+  "description": "Every day at 11:00 AM (Asia/Shanghai), analyzes new arXiv papers in cs.DC, cs.OS, cs.PF and related system/AI Infra topics, generates a daily digest, and publishes it to GitHub (xxx1766/arxiv-systems-daily).",
+  "agent_permissions": {
+    "workspace_uris": [
+      "file:///Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily"
+    ],
+    "access_grants": [
+      "command(python3 /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/scripts/fetch_arxiv.py)",
+      "command(python3 /Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily/scripts/publish_report.py)",
+      "command(git)",
+      "read_url(arxiv.org)",
+      "execute_url(arxiv.org)",
+      "read_url(github.com)",
+      "execute_url(github.com)",
+      "read_file(/Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily)",
+      "write_file(/Users/xqr/.gemini/antigravity/scratch/arxiv-systems-daily)"
+    ]
+  }
+}

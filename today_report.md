@@ -1,312 +1,391 @@
-## arXiv 系统方向日报 · 2026-11-03
-
+## arXiv 系统方向日报 · 2026-11-04
 ### 今日概览
-- 候选总数：24 篇；入选深读：12 篇
-- 分类分布：cs.DC 16 / cs.OS 0 / cs.PF 2 / 关键词兜底 6
-- 方向分布：容器与运行时 2 / 编排与调度 2 / AI Infra 6 / 性能与可靠性 2
+- 候选总数：109 篇；入选深读：12 篇
+- 分类分布：cs.DC 57 / cs.OS 11 / cs.PF 18 / 关键词兜底 32
+- 方向分布：容器与运行时 3 / 编排与调度 3 / AI Infra 5 / 性能与可靠性 1
 - 今日必读（3 篇）：
-  1. **HiState: Hierarchical Prefix Cache Management for Hybrid LLM Serving in Agentic Workloads**：直击 Agent 工作流频繁回溯历史会爆显存的痛点，给出了 SSD + 显存分层管理循环快照的优雅解法。
-  2. **ARK: Avoiding Routing Collisions for KV Cache Transfer in Disaggregated LLM Inference**：针对 PD 分离架构中跨节点搬运 KV Cache 导致 ECMP 网络哈希冲突的难题，提出了发送端自适应端口协调机制。
-  3. **Matching Workloads to Blackwell: Power-Resolved Benchmarking of NVIDIA B200 and B300 across HPC and AI Workloads**：揭示了下一代 B300 相比 B200 在部分卷积与 70B LLM 推理上因功耗未能打满而性能倒退的现象，对云原生 GPU 集群选型有极高参考价值。
+  1. **RTP-LLM: Building an Evolvable and Reliable LLM Inference Engine at Alibaba Scale**：阿里巴巴开源并披露其支撑全集团核心业务日均数百兆 Token 生产流量的统一大模型推理底座，实现模型专有算子执行与通用集群资源调度的深度解耦。
+  2. **When Cache Pressure Becomes a Trap: Metastability in Agent Serving**：首次揭示 PD 分离云原生推理集群中，瞬时突发流量破坏 Agent 历史前缀缓存复用后所引发的不可自愈“亚稳态失效陷阱”，给出精准数学建模与自愈防护系统 Basin。
+  3. **TenonAgent: Virtualizing Execution Residency for Memory-Oversubscribed LLM Agents**：针对长程 Agent 沙箱与容器环境面临的内存峰值预留浪费与超卖 OOM 崩溃困境，基于 Linux sched_ext 和双时间尺度控制面实现了突破性的执行驻留虚拟化与高达 8.6 倍的内存安全超卖。
 
 ---
-
 ### 逐篇解读
-
-#### [1]. HiState: Hierarchical Prefix Cache Management for Hybrid LLM Serving in Agentic Workloads
-- 中文译名：HiState：面向 Agent 复杂负载的混合架构大模型推理分层前缀缓存管理
-- 链接：https://arxiv.org/abs/2610.41508
-- 作者：Zaifeng Pan, Lucas Wang, Xinwei Qiang, Yanbo Zhou, Chang Chen, 等, Yufei Ding
-- 单位：加州大学圣迭戈分校（UC San Diego）【知名实验室】
-- 分类：cs.DC
-- 方向标签：AI Infra-推理系统 / KV Cache 与状态管理
+#### [1]. RTP-LLM: Building an Evolvable and Reliable LLM Inference Engine at Alibaba Scale
+- 中文译名：RTP-LLM：阿里巴巴超大规模可演进与高可靠大语言模型推理引擎
+- 链接：https://arxiv.org/abs/2611.00967
+- 作者：Jiarui Guo, Zhi Zhang, Boyu Tan, Zongwei Lv, Haobo Sun, 等, Lu Chen
+- 单位：阿里巴巴集团（Alibaba Group）【工业界】、北京大学【知名实验室】、浙江大学【知名实验室】
+- 分类：cs.OS
+- 方向标签：AI Infra-推理系统 / 生产级大规模集群工程
 - 相关度：★★★★★（5/5）
 
-1. **核心贡献**：解决了混合架构大模型（注意力层 + 线性循环层）在多轮 Agent 交互与上下文回溯时，中间循环断点（Checkpoints）大量挤占显存或因缺失导致昂贵重算的矛盾。
-2. **原理解析**：混合架构模型中，注意力层像 Pod 挂载的只读全量持久数据卷（所有 token 的 KV Cache 都必须留着），而循环层则像容器在某一时间步的快照镜像（每次推理只需要那一个状态点）。Agent 工作流经常“撤回重来”或“多分支探索”，若把每个历史快照都塞在 GPU 显存里，显存很快被撑爆；若不存，重走分支就要从头重算。HiState 敏锐发现“每次前缀命中需要所有 KV 块，但只需要对应步数的单个循环快照”，因此果断将固定大小的循环快照卸载到高速 NVMe SSD，把寸土寸金的显存留给 KV Cache；同时通过自适应间隔控制动态调整快照保存步频，配合统一驱逐策略协同释放过期状态。
-3. **关键结论**：在 vLLM 上实现，基于两套公开代码 Agent 真实 trace（如 SWE-bench 场景）评测，HiState 相比当前最前沿的 vLLM-Marconi 和 SGLang-HiCache，P99 TTFT（首字延迟）分别降低了多达 5.73 倍和 5.44 倍。提升主因在于彻底消除了深层分支回溯时的重复 Prefill 计算，且未对显存造成额外驻留压力。
+1. **核心贡献**：大模型架构与加速算子迭代极为迅猛（新投机解码、长上下文稀疏注意力、异构量化层出不穷），以往开源推理框架（如早期 vLLM、TensorRT-LLM）往往将模型计算图实现与底层分布式集群管理、请求批处理调度紧耦合，导致每次算法升级都演变为伤筋动骨的集成风险。阿里巴巴开源并深度披露了支撑其全集团核心业务（通义千问大模型、淘宝、天猫、阿里云等）每天数百兆 Token（hundreds of trillions of tokens per day）生产流量的统一生产推理底座 RTP-LLM。
+2. **原理解析**：类似于 Kubernetes 控制平面中 API Server、Controller 与 Kubelet 的清晰分层，RTP-LLM 在系统架构层面将“模型专有算子执行（Model-specific Execution）”与“通用请求流批处理、KV Cache 内存池化管理和跨卡资源协调（Shared Serving Infrastructure）”进行了彻底的解耦。模型开发者只需像实现 CRI 接口一样遵循明确的算子契约即可快速接入新模型；而在底座运维层，针对生产环境中加速硬件偶发性 ECC 错误、通信挂死和节点漂移，RTP-LLM 建立了细粒度局部故障隔离与动态流量摘除机制，避免单个 Pod 硬件异常引发服务级雪崩。
+3. **关键结论**：RTP-LLM 已从阿里内部的探索性系统演进为支撑全集团大模型业务的共享生产底座，稳定支撑了约 100 种异构大语言与多模态模型，日均吞吐高达数百兆 Token；在面临密集模型热升级与长尾突发并发时，将新模型端到端接入交付周期从数周压缩至数天，硬件偶发故障下的 SLA 跌落率削减了 90% 以上。
 4. **背景地位**：
-   - 基于代表性工作：vLLM（PagedAttention / Marconi 分支）、SGLang（HiCache / RadixAttention 树形缓存）、Mamba/RWKV 混合模型【论文明确提及】。
-   - 可能影响后续方向：多模态长程 Agent 推理系统、有状态推理 Pod 的分布式分层缓存设计【基于领域常识推测】。
+   - 基于代表性工作：FasterTransformer、vLLM（PagedAttention）、TensorRT-LLM、Ray Serve 生产编排【论文明确提及】。
+   - 可能影响后续方向：云原生 AI 算力中心工业级推理引擎标准、异构硬件通用推理中间层规范【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：直接对接云原生 LLM 推理引擎（vLLM/SGLang），影响 Kubernetes 上 Serving Pod 的 GPU 显存配额设定与 P99 延迟 SLA。
-   - 能否借鉴到 K8s/云原生体系：可以。类似云原生存储中的分层存储（Tiered Storage）架构思想，通过本地 NVMe 盘缓解显存争抢，非常适合作为推理 Pod 的本地缓存扩展方案。
-   - 建议先读：Section 3 (Memory Hierarchy Asymmetry) 与 Section 4 (Unified Eviction & Adaptive Interval)。
-   - 是否开源：基于开源 vLLM 构建，开源链接论文未注明。
+   - 关联点：直接对接云原生 Kubernetes AI 推理服务架构（Serving Pods）、GPU 算力异构纳管与跨多业务租户的推理调度。
+   - 能否借鉴到 K8s/云原生体系：极具借鉴价值。其“执行-调度分层解耦”架构可直接作为企业级 K8s LLM Operator 或推理 Sidecar 的系统蓝图，有效解决算法频繁升级冲垮 K8s 生产基础设施稳定性的难题。
+   - 建议先读：Section 2 (Architecture Overview & Decoupled Abstraction) 与 Section 4 (Reliability in Production Scale)。
+   - 是否开源：已完全开源，代码托管于 GitHub (https://github.com/alibaba/rtp-llm)。
 
 ---
-
-#### [2]. ARK: Avoiding Routing Collisions for KV Cache Transfer in Disaggregated LLM Inference
-- 中文译名：ARK：消除分离式 LLM 推理架构中 KV Cache 跨网络传输的路由哈希冲突
-- 链接：https://arxiv.org/abs/2610.41160
-- 作者：Hung-Chun Lin, Ting-Wei Hsu, Chung-En Ho, Ahmed Saeed
-- 单位：佐治亚理工学院（Georgia Tech）【知名实验室】
-- 分类：cs.NI, cs.AI, cs.DC
-- 方向标签：AI Infra-推理系统 / 云原生网络
+#### [2]. When Cache Pressure Becomes a Trap: Metastability in Agent Serving
+- 中文译名：当缓存压力变为系统陷阱：Agent 推理服务中的亚稳态失效崩溃
+- 链接：https://arxiv.org/abs/2611.02543
+- 作者：Chengzhi Lu, Boxi Zhou, Yanying Lin, Dmitrii Ustiugov
+- 单位：南洋理工大学（NTU）【知名实验室】、哈佛大学（Harvard University）【知名实验室】
+- 分类：cs.DC
+- 方向标签：AI Infra-推理系统 / 编排调度与可靠性
 - 相关度：★★★★★（5/5）
 
-1. **核心贡献**：攻克了 Prefill-Decode 分离（PD 分离）大模型服务架构中，Prefill 节点向 Decode 节点跨网络发送海量 KV Cache 时，因无状态 ECMP 哈希冲突导致链路拥塞、尾延迟拉长的痛点。
-2. **原理解析**：在 PD 分离架构中，Prefill Pod 算完长提示词后，要跨节点把数兆到数吉字节的 KV Cache 经由 RDMA 网络推给 Decode Pod。这种传输是持续数百毫秒到数秒的“大象流”（Mega Elephant Flow）。数据中心网络交换机默认使用 ECMP 算法依据五元组哈希分流，多条并发的 KV 大流很容易被“盲分”到同一根物理上联链路（Spine 交换机）上发生撞车，导致该链路被挤爆疯狂排队丢包，而旁边的链路却空闲。ARK 利用大象流生命周期长的特点，在发送端之间引入极轻量级的端口协商机制，发送端主动微调自己的源端口号，确保并发大流的哈希映射精准打散到不同的 Spine 交换机，全程无需对网络交换机固件做任何修改。
-3. **关键结论**：在数据包级 RDMA 网络仿真评估中，ARK 在中等负载下将平均流完成时间（FCT）和 P95 尾部流完成时间分别降低高达 27.3% 和 34.0%，并使整个推理服务的端到端平均首字延迟（TTFT）降低 12.9%。提升归功于从源头上杜绝了 Spine 骨干链路上的排队拥塞与 RDMA PFC 拥塞反压。
+1. **核心贡献**：首次揭示了在 Prefill-Decode 分离（PD 分离）架构的云原生推理集群中，高并发 Agent 长程多轮交互负载遭遇瞬时流量突刺时，会陷入灾难性的“亚稳态失效（Metastable Failure Trap）”——即便突发流量早已退去、系统负载降回正常水位，集群推理性能依然彻底瘫痪无法自愈。
+2. **原理解析**：打个比方，这就像 K8s 节点因为突发流量导致内存撑爆，触发了全局连续 OOMKilled，各个 Pod 陷入 CrashLoopBackOff 并疯狂重试，即便外部请求量恢复正常，CPU 和网络依然被重试风暴占满。在 Agent 推理中，“正反馈恶性循环”机制是：瞬时流量洪峰导致 Prefill 节点显存压力剧增，迫使系统驱逐已缓存的前缀 KV Cache；Agent 每次交互都带着长历史，没有了缓存命中，原本几毫秒的计算瞬间退化为耗时数秒的 Full Prefill；耗时拉长导致各 Agent Session 滞留集群时间成倍增加，集群并发活跃会话的工作集（Working Set）进一步膨胀，引发更激烈的 Cache 驱逐和全量重算。
+3. **关键结论**：在真实生产引擎 SGLang 和真实 1P3D（1 个 Prefill + 3 个 Decode）H200 集群上评测，仅 10 分钟的瞬时压力突刺，就导致集群在随后整整 1 小时内 Goodput 暴跌约 88%；作者提出了流体力学数学模型，并研发了防护系统 Basin（基于会话优先级准入、峰值上下文预留、借用 Decode 空闲显存扩展缓存、主动丢弃超载需求）。Basin 在包含 SWE-bench Pro 的突刺场景下，Goodput 达到 Continuum 的 1.20~1.70 倍，是原始 HiCache 的 2.35~3.59 倍。
 4. **背景地位**：
-   - 基于代表性工作：DistServe、Splitwise 等 PD 分离推理系统，以及传统数据中心多路径流量工程协议【论文明确提及】。
-   - 可能影响后续方向：下一代云原生 RDMA CNI 插件优化、AI 推理网关流量调度策略【基于领域常识推测】。
+   - 基于代表性工作：SGLang（HiCache / RadixAttention）、DistServe、vLLM、分布式系统亚稳态经典理论（Bronson et al.）【论文明确提及】。
+   - 可能影响后续方向：云原生 AI 集群的准入控制（Admission Webhook）、长上下文 Agent 服务自愈与弹性调度策略【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：直接关乎 Kubernetes 集群中 PD 分离架构的 CNI 网络底座、RoCEv2 无损网络拓扑调度及跨机架流量工程。
-   - 能否借鉴到 K8s/云原生体系：可以。ARK 采用纯端主机（Host-based）方案，可无缝集成到 Kubernetes 容器网络插件（CNI）或主机 eBPF/网卡驱动层中，完全兼容现有云厂商网络基础设施。
-   - 建议先读：Section 3 (Motivation: Hash Collisions) 与 Section 4 (ARK Coordination Mechanism)。
+   - 关联点：直接关系到 Kubernetes 上部署 SGLang/vLLM 生产集群时的 HPA/KEDA 弹性扩缩容、请求过载丢弃（Load Shedding）和 PD 拓扑配比。
+   - 能否借鉴到 K8s/云原生体系：强烈推荐借鉴。Basin 提出的会话感知准入控制与基于低命中容量的熔断限流逻辑，非常适合直接编写为 K8s Envoy/Ingress Gateway 的智能流量过滤插件。
+   - 建议先读：Section 2 (Anatomy of Metastable Failure) 与 Section 5 (Basin System Design)。
+   - 是否开源：论文未注明独立开源仓库（已公开核心流体动力学判定公式与 Basin 算法实现架构）。
+
+---
+#### [3]. TenonAgent: Virtualizing Execution Residency for Memory-Oversubscribed LLM Agents
+- 中文译名：TenonAgent：面向内存超卖场景下大语言模型 Agent 的执行驻留虚拟化系统
+- 链接：https://arxiv.org/abs/2611.00051
+- 作者：Yifan Zhang, Xinkui Zhao, Ruixin Huang, Lezhuo Xuan, Dianyu Wang, 等, Chang Liu
+- 单位：浙江大学（Zhejiang University）【知名实验室】
+- 分类：cs.OS
+- 方向标签：容器与运行时 / 资源管理与超卖
+- 相关度：★★★★★（5/5）
+
+1. **核心贡献**：攻克了长生命周期、多阶段 Agent 任务在受限宿主机内存下高并发运行时，若按峰值内存（Peak Memory）预留会导致严重资源浪费，而激进超卖（Oversubscription）又极易引发宿主机 OOM-Killer 崩溃或容器频繁重试的行业困局。
+2. **原理解析**：这正如同 Kubernetes 对 Pod 内存做 Requests/Limits 超卖时的经典难题。Agent 工作流中，大部分时间处于思考、等待网络 I/O 或等待工具返回的“低内存期”，只有在沙箱内编译代码、执行复杂脚本时才会产生瞬时内存洪峰。TenonAgent 提出了“逻辑 Agent 生命周期”与“物理容器执行驻留”的彻底解耦。它采用双时间尺度控制面：在动作边界（宏观），结合预测性准入控制与崩溃重放契约，动态对沙箱容器进行“物化（Materialize）”与“去物化（Dematerialize，换出到磁盘/内存压缩区）”；在工具执行中（微观），利用 Linux 最新可扩展调度器机制 `sched_ext` 实现内核级执行权限门控，精细调节各沙箱的 CPU 调度配额以平抑并发内存增长速率。
+3. **关键结论**：在覆盖多样化真实 Agent 负载（如长程多步骤代码生成与数据分析）的测试中，TenonAgent 在宿主机内存超卖高达 8.6 倍的极端流量冲击下，彻底消除了 OOM 崩溃，取得了 100% 的任务成功率；相比传统固定规格容器池，单机可并发承载的 Agent 活跃实例数提升了数倍。
+4. **背景地位**：
+   - 基于代表性工作：Linux 内核 `sched_ext`（eBPF 可编程调度器）、Firecracker 微虚拟机、gVisor 轻量沙箱、Knative Serverless 容器【论文明确提及】。
+   - 可能影响后续方向：云原生 Agent-as-a-Service 运行时沙箱规范、K8s 内存细粒度超卖控制器【基于领域常识推测】。
+5. **落地相关性**：
+   - 关联点：与容器运行时（containerd/runc/gVisor）、Linux cgroups v2 内存控制器、eBPF 调度扩展以及 K8s 节点资源高密混部高度契合。
+   - 能否借鉴到 K8s/云原生体系：可以。其基于 `sched_ext` 的细粒度容器平抑控制与两阶段沙箱物化机制，可作为企业自建高密度 Agent 执行沙箱平台（如类似 Code Interpreter 场景）的核心架构。
+   - 建议先读：Section 3 (Dual-Timescale Control Plane) 与 Section 4.2 (sched_ext Kernel Gate Implementation)。
    - 是否开源：论文未注明。
 
 ---
-
-#### [3]. MemX: Memory-Aware Automatic Parallelism for Cross-Vendor Heterogeneous GPU Training
-- 中文译名：MemX：面向跨厂商异构 GPU 集群分布式训练的显存感知自动并行系统
-- 链接：https://arxiv.org/abs/2610.41525
-- 作者：Lin Meng, Yuzhong Sun, Jie Zhu
-- 单位：中国科学院计算技术研究所（ICT, CAS）【知名实验室】
+#### [4]. Rethinking KV Cache Eviction for Agentic LLM Serving
+- 中文译名：重构 Agent 推理服务中的 KV Cache 驱逐机制
+- 链接：https://arxiv.org/abs/2611.00391
+- 作者：Jiakun Fan, Han Meng, Yuxuan Xia, Hao Mark Chen, Dong Li, Dimitrios S. Nikolopoulos
+- 单位：弗吉尼亚理工（Virginia Tech）【知名实验室】、加州大学默塞德分校（UC Merced）、纽约大学（NYU）、帝国理工学院（Imperial College London）【知名实验室】
 - 分类：cs.DC
-- 方向标签：AI Infra-训练系统 / 异构 GPU 集群调度
+- 方向标签：AI Infra-推理系统 / KV Cache 管理
 - 相关度：★★★★★（5/5）
 
-1. **核心贡献**：打破了现有自动并行训练框架将显存视作非弹性硬约束的局限，解决了不同厂商异构 GPU（算力、显存容量与互联带宽严重不对称）混合训练大模型时极易发生显存失衡与整机木桶效应的问题。
-2. **原理解析**：在多品牌异构 GPU 集群里跑并行，就像把载重和马力完全不同的卡车编入同一支车队。传统切分方式（如统一切成相同的张量或流水线块）要么让显存小的卡直接 OOM 崩溃，要么迁就弱卡导致大显存卡算力闲置。MemX 提出了一个多目标加权优化目标函数，将单步迭代耗时、峰值显存占用与跨卡显存负载均衡三者统一权衡；配合异构自适应重计算（大显存卡少重算、小显存卡多重算）、最小采样分析、双输出 XGBoost 预测器与哈希预测缓存，在秒级时间内完成海量并行配置空间的智能寻优。
-3. **关键结论**：在 Megatron-LM 上实现，在包含两类异构 GPU 的 20 卡真实物理集群及扩展仿真集群中验证。MemX 的预测误差（MAPE）仅为 12.17%，且是基线中唯一能在耗时与显存平衡双维度上精准命中真实 Top-1 配置的方法；搜索 31,240 种候选策略仅耗时 26.5 秒，而传统端到端全量采样在同等规模下推算需要 17 天。
-4. **基于代表性工作**：
-   - 基于代表性工作：Megatron-LM、Alpa、Galvatron 等自动并行系统【论文明确提及】。
-   - 可能影响后续方向：多源异构算力中心统一训练底座、K8s 算力调度器（如 Volcano/Kueue）的拓扑异构切分扩展【基于领域常识推测】。
+1. **核心贡献**：颠覆了传统 LLM 推理引擎（如 vLLM、SGLang）“从序列尾部逐块驱逐 KV Cache 以保留前缀（Prefix Sharing）”的固有假设，指出了在多轮长程 Agent 交互中，重算尾部 Token 的开销在二次注意力机制下远比重算早期 Token 昂贵得多。
+2. **原理解析**：在 Transformer 注意力矩阵中，第 1,000 个 Token 计算注意力只需看前 1,000 个 Token，而第 10,000 个 Token 计算则必须扫过整整 10,000 个历史 Token。传统驱逐策略为了图省事，把最尾巴的 KV 丢掉；当下一次 Agent 返回时，为了补齐尾巴，引擎被迫在极长上下文下重算昂贵的尾部注意力。Penelope 系统提出：“保留最通用的前缀，保留最新鲜的尾部后缀（Suffix），专门驱逐中间已归档的历史上下文片段”。当 Agent 返回时，只需重算中间这一小段缺失的轻量 Token，重算成本极低，同时最大限度复用高价值的尾部后缀缓存。
+3. **关键结论**：在 SGLang 框架内完整实现并基于真实的 Qwen3 多尺寸模型与 Agent 生产 trace 进行测试。在纯 GPU 显存缓存配置下，Penelope 将首字延迟（TTFT）降低了多达 60%，任务完成时间（JCT）缩短 37%；在 GPU-CPU 双层异构分层缓存架构下，TTFT 和 JCT 更是分别暴降 76% 和 60%。
+4. **背景地位**：
+   - 基于代表性工作：SGLang（RadixAttention）、vLLM（PagedAttention）、StreamingLLM、H2O 缓存淘汰【论文明确提及】。
+   - 可能影响后续方向：多轮 Agent 专属的非连续前缀树缓存结构、端到端分层存储推演系统【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：与 Kubernetes 异构算力纳管、多硬件拓扑感知调度、分布式训练 Operator（如 Kubeflow Training Operator）紧密相关。
-   - 能否借鉴到 K8s/云原生体系：可以。MemX 的预测与求解器可作为 K8s AI 训练控制器（Custom Controller）的前置编排器（Pre-scheduler），在拉起 Pod 前根据当前节点的真实硬件标签规划最佳 Rank 布局。
-   - 建议先读：Section 3 (Formulation of Objective Function) 与 Section 4.2 (Heterogeneous Recomputation)。
-   - 是否开源：论文未注明。
+   - 关联点：直接关系到云原生 vLLM/SGLang 服务的显存利用率、吞吐量和长轮次对话 Pod 的延迟稳定性。
+   - 能否借鉴到 K8s/云原生体系：可以。其“首尾保留、剔除中段”的非对称切片思想，可直接集成进容器化推理镜像中的 KV Cache 管理器，减少大模型 Serving Pod 对昂贵高显存卡（如 H100 80G）的硬性容量依赖。
+   - 建议先读：Section 2 (Motivation: Cost Asymmetry of KV Recomputation) 与 Section 4 (Penelope Cache Co-design)。
+   - 是否开源：基于开源系统 SGLang 研发，论文未注明独立开源仓库链接。
 
 ---
-
-#### [4]. LLM Fine-Tuning Workloads: Characterization, Challenges, and Opportunities for Serverless AI
-- 中文译名：大语言模型微调负载剖析：无服务器 AI（Serverless AI）的系统挑战与优化契机
-- 链接：https://arxiv.org/abs/2610.40983
-- 作者：Radu Nicolae, Daniele Lotito, Alexandru Iosup
-- 单位：阿姆斯特丹自由大学（VU Amsterdam @Large Research 团队）【知名实验室】
+#### [5]. Fairway: Load-Aware KV Cache Reuse for LLM Prefill Scheduling
+- 中文译名：Fairway：感知负载的大模型 Prefill 阶段 KV Cache 复用调度器
+- 链接：https://arxiv.org/abs/2611.02082
+- 作者：Hamidreza Alikhani, Nazmul Takbir, Matin Khajavi, Rajat Bhattacharjya, Sangeetha Abdu Jyothi, Nikil Dutt
+- 单位：加州大学尔湾分校（UC Irvine）【知名实验室】、Apiphany【工业界】
 - 分类：cs.DC
-- 方向标签：容器与运行时 / AI Infra-训练系统
+- 方向标签：编排与调度 / AI Infra-推理系统
 - 相关度：★★★★★（5/5）
 
-1. **核心贡献**：首次针对 Serverless AI 平台承载大规模 LLM 微调任务时的运行特征、高故障率风险及网络瓶颈，进行了基于 3 万余次跨卡真实微调基准测试的系统性实证剖析。
-2. **原理解析**：在 Serverless 容器平台上跑微调，用户希望像调普通云函数一样“只扔数据和任务，按跑完的 token 付费”，把 GPU 规格分配、网络拓扑和防挂机制全丢给平台。但作者通过对 IBM LLMFineTuningBench（包含 30,920 次涵盖 1-32 张 GPU、4 类主流显卡的微调实验）的数据挖掘发现：如果平台缺乏智能配置，极易造成集群大面积雪崩。研究揭示了任务成败与批处理规模的陡峭临界线、单机与跨机扩展性鸿沟，并证明了系统网络级优化对微调吞吐的决定性作用。
+1. **核心贡献**：破解了现代大模型集群在处理 RAG 和 Agent 长上下文时，排队调度在“激进命中缓存（Reuse-First）导致大任务饿死”与“经典先来先服务（FCFS）丧失缓存红利”之间的非黑即白调和困境。
+2. **原理解析**：当多个带着相同前缀（如系统提示词或长文档）的请求涌入排队队列时，如果调度器盲目把请求塞给缓存命中最长的 Worker Pod，就会导致该 Worker 瞬间过载大排长龙（尾延迟飙升），而未命中缓存的冷请求则被长期饿死；如果采用纯粹 FCFS 队列，又白白把热缓存洗掉，造成算力严重浪费。Fairway 引入了巧妙的“虚拟双车道模型（Virtual Dual Lane）”：队列上层划分为“缓存复用极速车道（Fast Lane）”和“公平保障车道（Fair Lane）”。当队列较空时让 Fast 车道全速行驶，尽享缓存复用红利；当某请求在等待队列中等待的时间相比其自身的计算耗时过长时，自适应将其提速并调度，动态平衡排队延迟与算力节省。
+3. **关键结论**：Fairway 无需针对特定模型进行复杂的离线超参数调优。在瞬态过载与长尾测试中，Fairway 相比现有前缀感知调度器（如 Cache-aware 调度），将 P99 TTFT 降低了多达 8.6 倍；在突发流量洪峰下，它在维持 FCFS 极低尾延迟的同时，将中位数 TTFT 压低了 6 倍。
+4. **背景地位**：
+   - 基于代表性工作：vLLM Chunked Prefill、SGLang、Orca、Kube-scheduler 优先级调度机制【论文明确提及】。
+   - 可能影响后续方向：K8s 网关层（如 Envoy/Istio AI Gateway）的智能路由调度算法、LLM Cluster Ingress 控制器【基于领域常识推测】。
+5. **落地相关性**：
+   - 关联点：直接对接 Kubernetes 集群中面向多推理实例的负载均衡器（Load Balancer）、Ingress Controller 与分布式推理路由层。
+   - 能否借鉴到 K8s/云原生体系：非常容易借鉴。Fairway 的双车道加权分析模型完全不需要侵入修改 GPU 内部算子，只需作为一个外部调度代理（Reverse Proxy / Gateway Sidecar）部署在推理集群入口即可发挥效用。
+   - 建议先读：Section 3 (Trade-off Analysis: Reuse vs. Head-of-Line Blocking) 与 Section 4 (Dual-Lane Architecture)。
+   - 是否开源：论文未注明开源链接。
+
+---
+#### [6]. Same Function, Different CPU: Quantifying Hardware Heterogeneity in Commercial FaaS Platforms
+- 中文译名：同一函数，不同 CPU：量化商用 FaaS 平台中的底层硬件异构性
+- 链接：https://arxiv.org/abs/2611.02990
+- 作者：Jonas Heisterberg, Natalie Carl, Trever Schirmer, David Bermbach
+- 单位：柏林工业大学（TU Berlin）【知名实验室】
+- 分类：cs.DC
+- 方向标签：容器与运行时 / Serverless 与 FaaS
+- 相关度：★★★★★（5/5）
+
+1. **核心贡献**：打破了云厂商宣称的 Serverless/FaaS“统一抽象与可预测性能”神话，对全球四大主流商用 FaaS 平台（AWS Lambda、Google Cloud Run Functions、Azure Functions、Alibaba Function Compute）底层 CPU 异构性导致的“算力抽奖（Hardware Lottery）”进行了前所未有的大规模量化归因与经济成本剖析。
+2. **原理解析**：用户在 K8s 或公有云上部署云函数（Pod / Container）时，平台对外只暴露统一的“内存规格（如 512MB/1GB）”。然而在幕后，物理调度器会将容器调度到不同代际、不同微架构的宿主机 CPU 上（从古老的 Broadwell/Haswell 到最新的 EPYC Milan/Genoa 或 Graviton3）。论文利用方差分解数学方法，将底层 CPU 差异与“吵闹邻居（Noisy Neighbors）”、网络波动、昼夜节律完全剥离，精准测量硬件本身对性能波动的影响。
 3. **关键结论**：
-   - 任务可行性极为敏感：小批次（Batch Size 16-64）的任务失败率为 52%，而大批次（1,024）的失败率竟高达 95%（主要诱因为显存超限 OOM 与通信死锁）；
-   - 吞吐量随 Batch Size 呈对数级增长，单节点内可达近线性扩展，而跨节点部署对网络极度依赖，配置 RoCE 网络后跨机扩展效率由 0.26 飙升至 0.72；
-   - 系统层网络调优（RoCE 加速高达 2.9 倍）的收益显著超越了应用层算子融合（Fast MoE 加速仅 1.7 倍）。
+   - 在 AWS Lambda 和 Google Cloud Run Functions 上，单纯 CPU 异构性贡献了高达 4%~97% 的性能执行时间方差；
+   - 在 Google Cloud Run 和阿里函数计算上，不同节点 CPU 的指令集扩展（如加速加密计算的 SHA-NI 或 AVX-512）支持情况不一致，导致同规格函数在某些节点上性能断崖式下跌；
+   - 由于 FaaS 均按执行时长计费，这种“算力抽奖”直接转嫁为用户真金白银的账单差异：在最慢 CPU 节点上运行相同请求的花费，竟高达最快 CPU 节点的整整 3 倍！
 4. **背景地位**：
-   - 基于代表性工作：IBM LLMFineTuningBench、ServerlessBench、Ray/Knative 微服务弹性伸缩【论文明确提及】。
-   - 可能影响后续方向：云原生 Serverless 训练平台的智能 Admission Webhook、GPU 容器内存自动防护与配额规划【基于领域常识推测】。
+   - 基于代表性工作：ServerlessBench、vHive、SPEC CPU、Knative 自动伸缩框架【论文明确提及】。
+   - 可能影响后续方向：云原生 FaaS 平台的硬件感知调度器、合规性 SLA 计量标准【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：直接对应 Kubernetes 集群管理 AI 微调作业时的 Pod 资源规格（Requests/Limits）设定、GPU 拓扑感知调度及跨节点 RoCE 网络依赖。
-   - 能否借鉴到 K8s/云原生体系：可以。论文中归纳的批次-显存失效边界模型，可直接沉淀为 K8s 准入控制器或 Auto-scaler 的校验规则，防止不合理任务冲垮集群。
-   - 建议先读：Section 4 (Workload Feasibility and Failure Analysis) 与 Section 5 (Scaling and Network Bottlenecks)。
-   - 是否开源：基于开源数据集 IBM LLMFineTuningBench，论文未附带独立新代码仓库。
+   - 关联点：与企业自建 Kubernetes Serverless 平台（OpenFaaS、Knative）、节点亲和性（NodeAffinity）、CPU 特性感知插件（Node Feature Discovery, NFD）密切相关。
+   - 能否借鉴到 K8s/云原生体系：高度可借鉴。自建 K8s 集群应当启用 NFD 暴露 CPU 拓展指令集标签，并在调度阶段对延迟敏感型容器进行精细绑定，避免在异构节点池中重蹈公有云“性能开盲盒”的覆辙。
+   - 建议先读：Section 3 (Variance Decomposition Methodology) 与 Section 5 (Instruction Set Heterogeneity and Cost Impact)。
+   - 是否开源：已在 GitHub 完全开源：基准工具 (https://github.com/Persists/benchmark-classifaas) 与测试数据集 (https://github.com/Persists/results-classifaas)。
 
 ---
-
-#### [5]. RecIS: Unifying Sparse and Dense Computation for Efficient Recommendation Training
-- 中文译名：RecIS：统一稀疏与稠密计算的高效工业级推荐系统训练框架
-- 链接：https://arxiv.org/abs/2610.41457
-- 作者：Hua Zong, Shuai Yang, Zhengxiong Zhou, Qingtao Zeng, Jiawei Liu, 等, Lin Qu
-- 单位：阿里巴巴集团（Alibaba Group）【工业界】
-- 分类：cs.DC
-- 方向标签：AI Infra-训练系统 / 算子与流水线优化
-- 相关度：★★★★★（5/5）
-
-1. **核心贡献**：攻克了工业级推荐大模型融合“万亿级稀疏 Embedding”与“深层 Transformer 稠密运算”时，所引发的算子细粒度碎片化、跨卡负载失衡及流水线气泡停顿等系统性性能墙。
-2. **原理解析**：现代推荐系统训练就像工厂一条线上既要分拣成千上万种零散原料（高维稀疏特征），又要将其塞入大型精密冲压机（稠密大模型）。传统框架把这两个阶段割裂开，导致 GPU 经常出现“算完等数据、传完等显存”的停顿气泡。RecIS 打造了一条统一数据流：第一，通过自适应算子融合将零散特征变换拼成大块连续向量访存；第二，自研 GPU Embedding 引擎，采用哈希分片与分级通信抹平请求热点，并对前反向索引做专门聚合优化；第三，采用多阶段流水线编排，将下一轮的数据准备与本轮的大模型稠密计算深度重叠，使 GPU 计算核心始终保持满载。
-3. **关键结论**：在阿里多套工业级超大规模推荐模型和分布式集群上实测，相比业界标杆系统 PICASSO 和 Meta 开源的 TorchRec，RecIS 的整体训练吞吐量分别提升了高达 2.62 倍和 1.15 倍，同时将训练迭代步延迟（Step Latency）分别削减了 61.5% 和 12.9%。
-4. **背景地位**：
-   - 基于代表性工作：PyTorch、Meta TorchRec、PICASSO、NVIDIA HugeCTR【论文明确提及】。
-   - 可能影响后续方向：全 GPU 推荐系统云原生化部署、异构内存分级扩展与图生推荐一体化训练【基于领域常识推测】。
-5. **落地相关性**：
-   - 关联点：大规模广告推荐模型分布式训练、容器化 GPU 显存分级缓冲、高性能训练集群的通信与存储协同。
-   - 能否借鉴到 K8s/云原生体系：可以。RecIS 原生基于 PyTorch 生态构建，可打包为无特殊定制依赖的容器镜像，直接运行在基于 Volcano/KubeRay 的 K8s 训练集群中。
-   - 建议先读：Section 3 (System Architecture Overview) 与 Section 4.2 (GPU Embedding Engine)。
-   - 是否开源：已开源，代码开源于 [https://github.com/alibaba/RecIS](https://github.com/alibaba/RecIS)。
-
----
-
-#### [6]. Matching Workloads to Blackwell: Power-Resolved Benchmarking of NVIDIA B200 and B300 across HPC and AI Workloads
-- 中文译名：算力与硬件的精准匹配：NVIDIA B200 与 B300 在 HPC 及 AI 负载下的功耗级实测
-- 链接：https://arxiv.org/abs/2610.41919
-- 作者：Mohsen Zand, Trung Dac Nguyen, H. Birali Runesha
-- 单位：芝加哥大学（University of Chicago）
-- 分类：cs.DC, cs.AR
-- 方向标签：AI Infra-GPU/加速器集群 / 性能与能耗
-- 相关度：★★★★★（5/5）
-
-1. **核心贡献**：首次在双 8-GPU 物理生产集群上对 NVIDIA Blackwell 架构（B200 与 B300/Blackwell Ultra）进行了功率级（Power-Resolved）基准测试，揭示了 B300 并非对 B200 的绝对升级，并在部分关键 AI/HPC 负载上出现了因功耗无法打满导致的性能倒退。
-2. **原理解析**：集群运维和架构师往往认为“买最新一代 Ultra 显卡（B300）一定比普通版（B200）快”。作者在严格排除主机端 I/O 干扰的纯板载显存常驻条件下测试发现，B300 存在严重的“算力空载”问题：在传统卷积推理和特定 70B LLM 推理任务中，B300 的板载功耗仅能跑到额定 1100W TDP 的 36%~53%，而同环境下的 B200 却能充分利用功率，导致 B300 反而跑输；只有在能吃满 95%~97% 功耗墙的 ViT-Large 等高密度算子上，B300 才能如期胜出。此外，作者实测仅因升级了一个未充分优化的开发版 vLLM 软件，两台相同配置的 B300 节点的首字延迟（TTFT）就拉开了 2.1 倍的巨大差距。
-3. **关键结论**：在实测数据中，B300 在卷积推理上落后 B200 高达 5.6 倍，在 3D 视觉 Transformer 训练上落后 8 倍，在 Llama-3-70B 推理吞吐上落后 24%~27%，在双精度 HPC 应用（Quantum ESPRESSO）上落后 16 倍；论文为数据中心根据具体工作负载特征进行异构卡型采购和排产调度提供了定量指南。
-4. **背景地位**：
-   - 基于代表性工作：NVIDIA Hopper/Blackwell 微架构、vLLM 推理服务引擎、Llama-3 大模型标准评测【论文明确提及】。
-   - 可能影响后续方向：数据中心功耗感知调度（Power-Aware Scheduling）、GPU 频率与功耗限制策略（Power Capping）、云原生大模型推理部署调优【基于领域常识推测】。
-5. **落地相关性**：
-   - 关联点：直接影响 Kubernetes 集群中的 GPU 节点机型规格选型、Node Feature Discovery（NFD）硬件打标、以及 vLLM Serving Pod 的镜像构建与基准调优。
-   - 能否借鉴到 K8s/云原生体系：可以。证明了在调度器中不能只看“卡型号”或粗粒度算力数值，应配合 Node-Exporter/DCGM 采集 GPU 真实功耗饱和度，构建更精准的 Pod 亲和性与调度规则。
-   - 建议先读：Section 3 (Power-Resolved Profiling of Convolutional vs Transformer Workloads) 与 Section 4.2 (LLM Serving Insights)。
-   - 是否开源：实验基于标准开源框架与基准测试套件，论文未标注独立专用代码库。
-
----
-
-#### [7]. LEAP: Efficient LLM Inference Scheduling with Generalizable Length Prediction
-- 中文译名：LEAP：基于强泛化输出长度预测的高效大语言模型推理调度系统
-- 链接：https://arxiv.org/abs/2610.41359
-- 作者：Kwan Yan, Jialun Zhong, Yanzeng Li
-- 单位：未注明
-- 分类：cs.AI
-- 方向标签：AI Infra-推理系统 / 编排与调度
+#### [7]. Ripple: Deadline-Aware CPU-GPU Sharing for Embodied Inference
+- 中文译名：Ripple：具身推理场景下面向截止时间的 CPU-GPU 资源协同调度器
+- 链接：https://arxiv.org/abs/2611.01067
+- 作者：Jiadong Zhang, Xiaosong Ma
+- 单位：穆罕默德·本·扎耶德人工智能大学（MBZUAI）【知名实验室】
+- 分类：cs.DC, cs.OS, cs.PF
+- 方向标签：容器与运行时 / 资源隔离与混部
 - 相关度：★★★★☆（4/5）
 
-1. **核心贡献**：攻克了 LLM 推理调度中利用“最短作业优先（SJF）”降低排队延迟时，传统长度预测器泛化能力差、在线微调开销过大以及预测本身耗时过长拖慢推理排队的难题。
-2. **原理解析**：在推理网关处，如果调度器能预知每个请求到底需要输出多少 token，把短回复的请求插队先算（类似调度器优先处理快任务），就能大幅降低整体的平均排队等待时间。但现有的长度预测器通常是一个外挂的小模型，遇到业务领域突变就猜不准，而且预测本身也要占用 GPU 资源。LEAP 提出“顺手牵羊”方案：直接复用大模型在 Prefill 阶段由首批 token 计算出的隐状态（Hidden States），并在上面只挂一个极轻量的线性读出头（Linear Readout）；业务分布发生漂移时，在 CPU 上用无梯度的递归最小二乘法（RLS）异步在线更新预测参数，预测计算与后续排队流程完美重叠，不占用 GPU 训练开销。
-3. **关键结论**：相比最强基线，LEAP 的预测参数量缩减了 30,569 倍；在大域漂移下通过在线自适应将长度排序相关性（Spearman 相关系数）提升了 64.7%；实际推理服务测试显示，LEAP 将平均单 token 延迟降低了 15.9%~40.8%，同时服务吞吐量还提升了 1.9%。
+1. **核心贡献**：攻克了统一内存架构节点（如 NVIDIA DGX Spark、Jetson Orin/Thor 等边缘及具身工作站）在混部大模型推理（GPU 吞吐型）与实时控制感知（CPU 硬实时型）时，由于缺乏硬件级内存带宽隔离导致 CPU 控制进程严重超时丢帧的致命缺陷。
+2. **原理解析**：在统一内存物理架构中，CPU 与 GPU 共享同一组高速内存总线与控制器。当 GPU 启动激进的 LLM Prefill 或密集 Decode 时，庞大的显存搬运流量会瞬间“吃空”内存总线带宽。这就好比一个混部了批处理大数据 Pod 和微服务核心 API Pod 的 K8s 节点，大数据任务疯狂刷磁盘导致 I/O 拥塞，把前端业务彻底卡死。更恶劣的是，硬件平台根本没有暴露物理内存带宽计数器。Ripple 研发了一套无需底层硬件计数器的协同调度器：它将 LLM 推理切分为按层（Layer-by-Layer）可随时挂起/恢复的微任务单元，将 CPU 任务的剩余截止时间裕量（Slack）反向换算为 GPU 允许消耗的内存字节配额（Byte Budget），通过限制 GPU 活跃 SM 占用规模实现弹性让步。
+3. **关键结论**：在配备 GB10 处理器的 NVIDIA DGX Spark 上结合四类典型真实机器人 CPU 负载（代价地图更新、激光雷达最近邻搜索、立体视觉匹配、向量检索）及 SGLang 推理引擎进行了实机评测。Ripple 是所有参评基准中唯一一个在严格守住 CPU 任务 2% 截止时间超时率红线的同时，依然保持了最优 LLM 推理吞吐的方法。
 4. **背景地位**：
-   - 基于代表性工作：FastServe（基于优先级的抢占式调度）、vLLM/Continuous Batching、经典最短作业优先（SJF）调度理论【论文明确提及】。
-   - 可能影响后续方向：智能云原生 AI 推理网关（如 Envoy / KServe 调度拓展）、多租户大模型 API 请求限流与排队器【基于领域常识推测】。
+   - 基于代表性工作：SGLang、NVIDIA Jetson / DGX Spark 统一内存规范、ROS2 机器人运行时【论文明确提及】。
+   - 可能影响后续方向：边缘 AI 容器引擎（K3s/kubeedge）的多硬件干扰防护、轻量级混合负载实时调度【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：与 Kubernetes AI 推理网关（如 KServe、vLLM Router）的请求批处理编排与优先级队列紧密结合。
-   - 能否借鉴到 K8s/云原生体系：可以。LEAP 读出头极其轻量且可在 CPU 运行，极适宜包装进云原生 API 网关或 Ingress Controller 的 Sidecar 模块中实现实时智能请求排队。
-   - 建议先读：Section 3 (LEAP Architecture: Linear Readout and Online RLS) 与 Section 4.3 (Serving Latency Performance)。
+   - 关联点：边缘容器环境、单机混部架构（CPU 实时控制容器与 GPU 推理容器共存）、端侧智能 Pod 调度。
+   - 能否借鉴到 K8s/云原生体系：可以。其“将时延任务裕量动态换算为算力预算”的反向闭环调节机制，可抽象为 K8s 自定义资源控制器或 kubelet 资源隔离插件。
+   - 建议先读：Section 3 (Memory Contention Profile) 与 Section 4 (Layer-based Pacing Algorithm)。
    - 是否开源：论文未注明。
 
 ---
+#### [8]. When Shards Fly: Cross-Tensor In-Flight Conversion for Low-Latency, Low-Memory Weight Updates in Disaggregated RL
+- 中文译名：当切片飞越网络：解耦强化学习中跨张量在途转换的低延迟低显存权重同步
+- 链接：https://arxiv.org/abs/2611.00646
+- 作者：Jiayu Xiao, Ye Wang, Zhi Zhang, Jiarui Guo, Kan Liu, 等, Minchen Yu
+- 单位：香港中文大学（深圳）【知名实验室】、阿里巴巴集团（Alibaba Group）【工业界】、乔治华盛顿大学（GWU）
+- 分类：cs.DC
+- 方向标签：AI Infra-训练系统 / 分布式强化学习
+- 相关度：★★★★☆（4/5）
 
-#### [8]. Understanding the Energy Cost of Quantized Agents on Shared GPUs
-- 中文译名：探究共享 GPU 环境下量化智能体（Agent）的真实能耗成本
-- 链接：https://arxiv.org/abs/2610.41672
-- 作者：Stephen Abkin, Alex Flesher, Aldric Yang, Nitheesh Kodarapu, Deepak Panigrahy, David Kebo Houngninou
-- 单位：德州农工大学（Texas A&M University）
+1. **核心贡献**：解决了当前大模型强化学习（如 DeepSeek-R1、PPO、GRPO 训练）在将“训练集群（Training GPU Pool）”与“推理生成集群（Rollout GPU Pool）”进行物理分离部署时，频繁同步新权重所导致的严重通信停顿、显存溢出及显存拷贝开销。
+2. **原理解析**：在现代分布式 RL 架构中，训练端算完一步梯度后，必须把高达几十 GB 甚至上百 GB 的新策略模型权重广播给负责生成 Rollout 轨迹的数百张卡。由于两套池子的并行切分方式完全不同（例如训练端是 ZeRO-3/FSDP 分片，而 Rollout 端是张量并行 TP/流水线并行 PP），传统系统需要“先在本地分配数倍暂存缓冲区 -> 转换内存排布 -> 重新量化 -> 调用 NCCL 传输 -> 写入目标卡”，极易挤爆 Rollout 显存并导致训练严重停工。ShardFly 系统将全流程深度融合：设计了编译器 Planner 预先规划跨张量传输流水线，并在 GPU 侧使用常驻核心（Persistent Kernel）实现“跨张量在途转换（In-Flight Conversion）”——数据一边从网卡流过，一边由 GPU 核心完成显存排布重整和动态量化并直接落盘至目标显存地址，全程彻底省去中间转储 Buffer。
+3. **关键结论**：在多达 32 张 NVIDIA H20 GPU 集群上，跨 5 种大模型与 4 种最前沿基线（包括开源著名的 veRL NCCL、Awex、veRL NIXL 和 WeightBridge）展开横评。ShardFly 将全量 BF16 权重更新加速了 1.26~27.92 倍；在真实的 Qwen3-30B-A3B 模型的 GRPO 完整强化学习任务中，将端到端 Token 生成吞吐量提升了 5.49%~6.71%。
+4. **背景地位**：
+   - 基于代表性工作：veRL（ByteDance 开源分布式 RL）、NIXL、Megatron-LM、NCCL 集合通信库【论文明确提及】。
+   - 可能影响后续方向：新一代 Reasoning 大模型（思维链强化学习）专属高性能通信引擎、跨异构计算拓扑的权重分发 Sidecar【基于领域常识推测】。
+5. **落地相关性**：
+   - 关联点：Kubernetes 编排海量 GPU 执行分布式 RL 训练时的 Pod 间高速通信、RDMA 网络拓扑规划与内存配额优化。
+   - 能否借鉴到 K8s/云原生体系：可以。其零中间缓冲区的流式分发思想，对设计大规模模型权重发布 Operator（如镜像/权重预热与动态更新）有极大启发。
+   - 建议先读：Section 3 (Overheads in Disaggregated RL) 与 Section 4 (ShardFly Pipeline Execution)。
+   - 是否开源：论文未注明。
+
+---
+#### [9]. Sonar-MoE: In-Backward Expert Updates for Memory-Efficient Mixture-of-Experts Training
+- 中文译名：Sonar-MoE：基于反向传播过程中专家权重即时更新的高显存效率 MoE 训练
+- 链接：https://arxiv.org/abs/2611.03577
+- 作者：Avni Mittal, Avinash Anand, Ashutosh Kumar, Dikshant Kukreja, Kritarth Prasad, 等, Rajiv Ratn Shah
+- 单位：微软印度（Microsoft）【工业界】、新加坡理工大学、印度理工学院（IIT Kanpur / IIT Delhi）【知名实验室】、南洋理工大学（NTU）【知名实验室】
 - 分类：cs.PF
-- 方向标签：编排与调度 / AI Infra-GPU 共享 / 性能与能耗
+- 方向标签：AI Infra-训练系统 / MoE 显存与优化
 - 相关度：★★★★☆（4/5）
 
-1. **核心贡献**：纠正了“模型量化（如 4-bit）在共享 GPU 环境下必然节能”的传统直觉，揭示了量化引发的 Agent 任务失败/多次重试与显存/缓存激烈争抢，反而会导致“完成单个有效任务”的总能耗显著飙升。
-2. **原理解析**：在 Kubernetes 中通过虚拟切分（如 vGPU/MPS）让多个 Agent 容器共享单张 A100 时，为了超卖多塞几个 Pod，工程师习惯把模型压缩到 4-bit。单次请求跑下来，4-bit 确实能省下 10%~25% 的单次电量。但真实 Agent 处理编程或复杂数据分析等循环任务时，4-bit 精度下降导致其频繁出错、陷入自我纠错多轮死循环；加之多个容器争抢有限的 L2 缓存与显存带宽，导致端到端算力做大量无用功，最终按“成功交卷的任务”折算下来的净能耗不降反升。
-3. **关键结论**：在 40GB/80GB A100 集群及真实编程与分析验证任务上评测：当 4 个 Agent 并发且请求能装入缓存时，4-bit 权重较 8-bit 单次调用节能 10%~25%，但因错误激增导致每完成一个“有效验证任务”的能耗反而增加了 49%；当 16 个 Agent 在 40GB 显卡上争抢并对缓存施加硬限制时，有效任务能耗更是额外激增 34%。
+1. **核心贡献**：攻破了混合专家模型（MoE）分布式训练中，随着专家数量和参数规模激增，传统训练框架必须在显存中同时保留全模型所有专家梯度的痛点，彻底打破了 MoE 大规模扩展的显存天花板。
+2. **原理解析**：在标准的深度学习训练循环中，反向传播（Backward Pass）会从最后一层一直算到第一层，算出所有参数的梯度暂存在显存里，最后在 Optimizer Step 阶段统一计算梯度并更新权重。在 MoE 模型中，90% 以上的参数都在海量专家层里，把所有专家的梯度一次性常驻显存，是导致 OOM 的头号元凶。Sonar-MoE 将反向传播与优化器更新完全流水线化：每当反向传播计算完当前层的专家梯度，立刻就地更新该层专家的权重并瞬间释放对应的梯度显存！全卡显存中任何时刻最多只保留“单个网络层”的专家梯度，类似容器流式处理而不是大包批处理，大幅拉低了显存水位峰值。
+3. **关键结论**：在微调 OLMoE-1B-7B 和 Granite-3.1-3B-A800M 模型（BF16 精度、两套主流专家算子内核）时，Sonar-MoE 将峰值显存占用水位稳固降低了 19%~22%；数学更新结果与无梯度裁剪的标准训练位级完全一致，验证集 Loss 与各基线差距在 0.003 以内；相比带全局范数裁剪的基线训练，每步耗时缩短了 17%~23%。
 4. **背景地位**：
-   - 基于代表性工作：GPU 混部与共享机制（MPS/vGPU）、LLM 量化算法（AWQ/GPTQ）、HumanEval 等智能体测评基准【论文明确提及】。
-   - 可能影响后续方向：多租户 AI 容器准入控制（Admission Control）、基于业务良率（Goodput）的绿色计费与资源配额体系【基于领域常识推测】。
+   - 基于代表性工作：DeepSpeed-MoE、Megatron-Core MoE、Optimizer-in-backward（PyTorch 2.x 原生理念）【论文明确提及】。
+   - 可能影响后续方向：千亿/万亿稀疏大模型在更少 GPU 节点上的极致高密训练、K8s 训练任务规格降配【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：与 Kubernetes 平台上的 GPU 多租户混部切分（vGPU、HAMi、NVIDIA MPS）、容器 Pod 资源超卖及并发限制密切相关。
-   - 能否借鉴到 K8s/云原生体系：可以。警告了 K8s 运维团队不能只依据底层 GPU 利用率来做超卖决策，而需将业务层的“有效完成率”引入调度器与 HPA 自动伸缩闭环。
-   - 建议先读：Section 3 (Measurement Methodology) 与 Section 4 (Energy per Verified Completion Trade-offs)。
+   - 关联点：云原生分布式训练框架（如 Kubeflow Training Operator / PyTorchJob）、GPU 内存配额规格优化。
+   - 能否借鉴到 K8s/云原生体系：可以。通过引入该技术，单卡能塞下更大批次（Batch Size）或更多专家，直接降低 K8s 训练作业所需的 Pod 副本数和 GPU 卡数申请，大幅削减算力采购账单。
+   - 建议先读：Section 3 (Memory Footprint Bottleneck of MoE) 与 Section 4 (In-Backward Batched Update Design)。
    - 是否开源：论文未注明。
 
 ---
-
-#### [9]. Where KV-Cache Error Lives in Looped Language Models: A Diagnostic Study of Ouro and Huginn
-- 中文译名：循环语言模型中 KV Cache 误差分布的诊断研究：以 Ouro 和 Huginn 为例
-- 链接：https://arxiv.org/abs/2610.41825
-- 作者：Dezhen Lu, Runguo Li, Zixiang Ni, Yuchen Tang, Xingquan Kong, 等, Lingxiang Gao
-- 单位：未注明
+#### [10]. Introducing Cluster Efficiency to LLM Serving: Pooling Economical Accelerators over Fast Interconnects
+- 中文译名：引入集群效率：基于高速互联池化平价加速卡的大语言模型推理服务
+- 链接：https://arxiv.org/abs/2611.02975
+- 作者：Youhe Jiang, Pavle Glušac, Binhang Yuan, Eiko Yoneki
+- 单位：剑桥大学（University of Cambridge）【知名实验室】
 - 分类：cs.DC
-- 方向标签：AI Infra-推理系统 / 显存与缓存优化
-- 相关度：★★★☆☆（3/5）
+- 方向标签：编排与调度 / GPU 与加速器集群
+- 相关度：★★★★☆（4/5）
 
-1. **核心贡献**：针对参数多轮复用的循环大模型（Looped LM），深度剖析了 KV Cache 量化误差在不同循环轮次与 Key/Value 结构维度的累积机制，提出了针对性的非对称显存分配策略。
-2. **原理解析**：常规大模型是多层网络单向串行，而循环模型类似用一套基础层打多轮循环（例如跑 4 轮或 32 轮），每轮都需要维系自己的 KV 平面。对这种模型做 KV Cache 压缩时，如果一刀切做低比特量化，误差会在多次循环中非线性雪崩。研究发现，虽然理论上 Value 承载了 94% 的 Fisher 信息权重，但实际引发输出分布偏移（KL 散度）的瓶颈却在于量化误差较大的 Key 向量；据此设计的单元级（Cell-level）分配器可对敏感维度给予更高位宽保护。
-3. **关键结论**：在 Ouro（1.4B/2.6B）与 Huginn（循环多达 32 轮）上评测：提出的单元级分配器仅需占用 25%~48% 的 BF16 显存字节，即可显著拉低单步输出漂移；同时证实了在深层循环中权重共享误差对方向极度敏感，为超深循环架构的显存压缩划定了理论安全区。
+1. **核心贡献**：面对顶规 GPU（如 H100/B200）极度昂贵且严重供不应求的现实，系统性探讨并证明了利用高速互联网络将低成本平价加速卡（如 Tenstorrent Blackhole / PCIe 卡）池化，在长上下文 LLM 推理场景下达成比顶规 GPU 更高“单刀性价比（Tokens per Dollar）”与“单焦能效比（Tokens per Joule）”的可行性。
+2. **原理解析**：在长上下文推理（如 128K~256K 编程 Agent 任务）中，显存带宽与显存容量是最大瓶颈。平价芯片单卡算力与容量受限，必须通过跨卡分布式协同。但如果网络互联差，通信开销会把算力吞没。作者提出了“集群效率（Cluster Efficiency）”理论模型，并在由 Blackhole 芯片构成的 Tenstorrent Galaxy 硬件集群上落地了全套推理栈：结合集成通信引擎、环形流水线传输（Pipelined Ring Transfer）、计算与通信深度重叠以及设备端 Decode 重放机制，把分布式集体通信开销压缩至极限。
+3. **关键结论**：在涵盖 8K 到 256K 真实上下文长度的多款密集大模型（BF16 及 8-bit 量化）评测中，结合三年期采购与电力总拥有成本（TCO）模型计算，由平价加速卡池化构建的系统达到了八卡 RTX PRO 6000 Blackwell 顶规服务器 1.07~2.24 倍的单刀 Token 产出比（Tokens per Dollar）；而反向实验表明，若采用传统普通以太网 TCP 通信，吞吐会断崖式暴跌 23.5%~67.4%，性价比优势荡然无存。
 4. **背景地位**：
-   - 基于代表性工作：Looped Transformer 架构、KV Cache 混合精度量化（KIVI、KVQuant）【论文明确提及】。
-   - 可能影响后续方向：端侧极小显存设备的超高参数等效推理系统【基于领域常识推测】。
+   - 基于代表性工作：Tenstorrent 体系结构、vLLM、Megatron、RDMA 高性能集群网络【论文明确提及】。
+   - 可能影响后续方向：下一代云原生算力中心的平价多卡池化架构、跨芯片拓扑感知调度编排【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：推理引擎的底层 KV Cache 内存池管理算法与量化显存调度。
-   - 能否借鉴到 K8s/云原生体系：部分可以。属于推理算子内部的显存分配逻辑，其“保护 Key 精度、压缩 Value”的非对称思想可被引入主流推理框架（如 vLLM）的显存分配模块。
-   - 建议先读：Section 3 (Diagnostic Methodology) 与 Section 4 (Cell-level Allocator Results)。
+   - 关联点：数据中心异构算力集群规划、Kubernetes 自定义加速器设备插件（Device Plugin）与算力池化调度。
+   - 能否借鉴到 K8s/云原生体系：可以。对云基础设施架构师有极强的现实指导意义——在选型部署云原生推理集群时，不必盲目追逐昂贵顶规卡，通过合理的网络拓扑设计配合平价卡池化，能在相同预算下获得翻倍的系统吞吐量。
+   - 建议先读：Section 3 (Cluster Efficiency Metric & Cost Model) 与 Section 5 (Interconnect Dependency and Evaluation)。
    - 是否开源：论文未注明。
 
 ---
+#### [11]. Beyond Source Compatibility: WebAssembly as a Stable ABI for ARINC 653 Applications
+- 中文译名：超越源码级兼容：基于 WebAssembly 为 ARINC 653 安全关键应用构建稳定二进制 ABI
+- 链接：https://arxiv.org/abs/2611.00891
+- 作者：Wanja Zaeske, Patrick Siegl, Florian Hartung, Fabian Bauriedl, Nicolaus Bär, Umut Durak
+- 单位：德国航空航天中心（DLR）【知名实验室】
+- 分类：cs.OS
+- 方向标签：容器与运行时 / WebAssembly 与安全沙箱
+- 相关度：★★★★☆（4/5）
 
-#### [10]. Falcons: Pushing the Speed-Ratio Limits of Lossy Compression for Parallel Scientific Applications
-- 中文译名：Falcons：突破并行科学计算应用中有损压缩的压缩比与吞吐速率极限
-- 链接：https://arxiv.org/abs/2610.41209
-- 作者：Bing Lu, Jinyang Liu, Xinyang Ma, Quantong Fu, Chenwei Hou, 等, Dingwen Tao
-- 单位：上海交通大学【知名实验室】、中国科学院计算技术研究所
-- 分类：cs.DC
-- 方向标签：性能与可靠性 / 分布式 I/O 与传输
-- 相关度：★★★☆☆（3/5）
-
-1. **核心贡献**：解决了大规模并行分布式系统在处理极高吞吐数据流时，传统有损压缩计算开销过大导致 I/O 停滞的矛盾，兼顾了高压缩比与超高压缩吞吐。
-2. **原理解析**：在成千上万节点的分布式集群中，保存 Checkpoint 或跨节点同步中间状态时，网卡和磁盘总是跟不上。虽然压缩能节省传输字节，但以往的有损压缩算法本身太耗 CPU 算力，导致“压缩省下的网络时间还不够 CPU 计算用的”。Falcons 结合了支持 SIMD 向量化加速的规则化内存插值算法、分布自适应无损编码以及针对多进程并行特性的结构调优，让数据压缩过程快到足以追平日渐激增的网络线速。
-3. **关键结论**：在主流超级计算集群上评测，相比现有最优压缩器，Falcons 在压缩比提升高达 29% 的同时实现了 255% 的吞吐量增长；在气象预报 WRF 真实工作流中，大规模并行 I/O 与跨节点远程传输耗时削减了 44.6%~51.5%，端到端作业流提速 1.55 倍。
+1. **核心贡献**：攻克了安全关键嵌入式分区操作系统（ARINC 653 航空及工业标准）三十年来仅停留在源码级 API 兼容、更换硬件架构或 OS 即需重新编译和耗费数月昂贵重新适航认证的痛点，首次基于 WebAssembly 构建了跨操作系统与处理器架构的确定性二进制 ABI 运行时规范。
+2. **原理解析**：在安全严苛与微服务沙箱领域，隔离（Sandboxing）与二进制可移植性（Portability）是终极追求。ARINC 653 的传统 C 语言接口因结构体内存对齐、大小端（Endianness）、指针位宽等实现细节不同，无法做到“一次编译，到处运行”。该工作通过规范类型契约，利用 WebAssembly（Wasm）线性内存模型与基于栈的安全沙箱特性，定义了底层标准二进制接口；同时实现了一套与底层 Wasm 虚拟机完全解耦的 Shim 垫片库，允许分区应用在无侵入重编译的情况下跨架构安全加载。
+3. **关键结论**：在两大独立 Wasm 运行时（Wasmtime 与开源沙箱引擎）及多种主流处理器架构上完整验证了航空级分区应用二进制文件的跨平台确定性加载，彻底消除了硬件平台变更对二进制运行态的破坏。
 4. **背景地位**：
-   - 基于代表性工作：SZ 压缩算法系列、ZFP、MPI-IO 分布式存储系统【论文明确提及】。
-   - 可能影响后续方向：大模型超快速检查点（Checkpoint）保存与恢复、分布式云存储压缩 Sidecar【基于领域常识推测】。
+   - 基于代表性工作：WebAssembly 核心规范、ARINC 653 工业标准、Wasmtime、a653lib 开源库【论文明确提及】。
+   - 可能影响后续方向：工业云原生安全沙箱、跨架构可重现容器镜像与零信任 Wasm 运行时【基于领域常识推测】。
 5. **落地相关性**：
-   - 关联点：云原生分布式存储 CSI 驱动、海量模型检查点快照落盘与跨可用区备份。
-   - 能否借鉴到 K8s/云原生体系：部分可以。其线速数据压缩设计可包装为分布式存储卷的传输加速 Sidecar，大幅加速大规模 Checkpoint 备份。
-   - 建议先读：Section 3 (Falcons Architecture: Memory-Regularized Interpolation) 与 Section 5 (WRF Case Study)。
+   - 关联点：云原生 WebAssembly 运行时（如 WasmEdge、Spin、Knative Wasm 插件）、边缘安全计算沙箱。
+   - 能否借鉴到 K8s/云原生体系：可以。Wasm 作为轻量安全沙箱在云原生体系（runwasi / CRI 扩展）中正快速落地，该工作关于跨架构数据对齐和标准 ABI Shim 的工程设计，对构建确定性安全沙箱容器有极佳参考价值。
+   - 建议先读：Section 3 (ABI Specification & Memory Layout Alignment) 与 Section 4 (Implementation and Evaluation)。
+   - 是否开源：已在 GitHub 依托 Airbus a653lib 开源生态公开 (https://github.com/airbus/a653lib)。
+
+---
+#### [12]. Weights That Stay: On-Chip Megakernels for Serial Heads in Speculative Decoding
+- 中文译名：权重常驻：面向投机解码串行预测头的片上 Megakernel 极致优化
+- 链接：https://arxiv.org/abs/2611.00506
+- 作者：Xinwei Qiang, Ziyi Xu, Zaifeng Pan, Chang Chen, Yufei Ding
+- 单位：加州大学圣迭戈分校（UC San Diego）【知名实验室】、RadixArk【工业界】
+- 分类：cs.DC
+- 方向标签：AI Infra-推理系统 / 投机解码与显存优化
+- 相关度：★★★★☆（4/5）
+
+1. **核心贡献**：针对大模型并行投机解码（Speculative Decoding）中，轻量级串行预测头（Serial Head）在多步推演过程中频繁跨步传输大型投影权重导致内存带宽严重受限的瓶颈，提出了一种将权重持久驻留在 GPU 片上（On-Chip SRAM/寄存器）的 Megakernel 执行架构。
+2. **原理解析**：投机解码是当下降低大模型推理端到端延迟的核心利器。然而，串行预测头每一步虽然只更新极小的隐藏状态向量，却必须把这个向量投影回庞大的词表矩阵（Vocabulary Projection Matrix）。如果按照传统的 Step-by-Step 方式发射算子，GPU 每一小步都要从外部显存（DRAM/HBM）把这个庞大的不可变矩阵重新搬运一次，导致算力闲置、显存带宽被打爆。论文提出了 Weights That Stay 架构：构建了一个持久化 Megakernel，将权重分片永久“钉”在片上 SRAM 中，在整个投机游走期间不被换出，各步骤之间仅在 GPU 片上交换极度紧凑的状态向量。
+3. **关键结论**：在 NVIDIA H100 和最新的 Blackwell B200 硬件上进行实测，全面支持马尔可夫头与循环预测头。在 SGLang 框架内完整落地集成后，Qwen3-4B 和 Qwen3-8B 的端到端推理吞吐量提升高达 12.3%；在预测头单独评测中，DSpark 步进速度比 SGLang 最优基线参考路径快了高达 11.6 倍。
+4. **背景地位**：
+   - 基于代表性工作：Speculative Decoding 经典工作（EAGLE / Medusa）、SGLang 推理系统、GPU Megakernel 体系结构【论文明确提及】。
+   - 可能影响后续方向：大模型超低延迟交互推理引擎内部算子融合演化、片上驻留式内核编译【基于领域常识推测】。
+5. **落地相关性**：
+   - 关联点：SGLang/vLLM 推理服务的内部算子层加速、低延迟对话/代码补全 Serving Pod 的服务等级协议（SLA）保障。
+   - 能否借鉴到 K8s/云原生体系：间接借鉴。属于底层算子运行时革新，但通过将该类高性能 Megakernel 编译打包进推理容器底座，可在无需扩容物理 GPU 节点的前提下直接压降 P99 交互延迟。
+   - 建议先读：Section 3 (Memory Wall in Serial Drafters) 与 Section 4 (Megakernel Residency Co-design)。
    - 是否开源：论文未注明。
 
 ---
-
-#### [11]. Layered Reproducibility for High-Performance Computing Applications: The Feel++ and Ktirio Urban Buildings Case Study
-- 中文译名：高性能计算应用的分层可重现性架构：Feel++ 与 Ktirio 建筑案例研究
-- 链接：https://arxiv.org/abs/2610.41861
-- 作者：Javier Cladellas, Vincent Chabannes, Christophe Prud'Homme
-- 单位：未注明
-- 分类：cs.DC
-- 方向标签：容器与运行时 / 软件供应链与工程
-- 相关度：★★★☆☆（3/5）
-
-1. **核心贡献**：针对复杂集群与异构环境下大型计算实验难以完整复现的痛点，构建了一套贯穿“代码提交、容器构建、软件物料清单（SBOM）到计算结果校验”的端到端分层可重现架构。
-2. **原理解析**：在云原生领域我们讲求“不可变基础设施”，但很多科学计算与深度工程项目依然充斥着隐式的宿主机库依赖，换台物理机跑结果就对不上。该工作将全套构建指令、CMake 预设、打包清单、OCI 容器镜像、SBOM 供应链安全元数据以及基准校验报告全量纳管为代码仓库原生的版本化资产，建立起一条从源码 Commit 到最终模拟结果校验哈希的不可篡改依赖链条。
-3. **关键结论**：在大型复杂城市建筑能耗模拟工作流（KUB）中成功验证，将原本极易出错的滞后人工打包核验，转变为在 CI 流水线中全自动输出带校验凭证的容器化发布件与结果包。
-4. **背景地位**：
-   - 基于代表性工作：OCI 容器规范、SPDX/CycloneDX SBOM 标准、科学数据 FAIR 原则【论文明确提及】。
-   - 可能影响后续方向：云原生 AI/HPC 实验平台的不可变容器分发标准、软件供应链安全合规【基于领域常识推测】。
-5. **落地相关性**：
-   - 关联点：直接对接云原生容器镜像制作、镜像内容信任（Notary/Cosign）、SBOM 安全扫描以及 K8s 自动化发布流水线。
-   - 能否借鉴到 K8s/云原生体系：可以。其提出的“容器镜像+数据清单+SBOM”强绑定版本对齐模式，对企业级 Kubernetes 基础设施构建合规发布管道有直接参考价值。
-   - 建议先读：Section 2 (Layered Reproducibility Framework) 与 Section 3 (Feel++ and KUB Implementation)。
-   - 是否开源：基于开源计算框架 Feel++ 落地实现。
-
----
-
-#### [12]. Migrating a Legacy Scientific Application with an AI Coding Agent: NICAM from Fortran to Kokkos
-- 中文译名：基于 AI 编码 Agent 迁移遗留科学计算应用：NICAM 气候模型从 Fortran 到 Kokkos 的实战
-- 链接：https://arxiv.org/abs/2610.41313
-- 作者：Xuanzhengbo Ren, Takashi Shimokawabe, Hisashi Yashiro
-- 单位：未注明
-- 分类：cs.DC
-- 方向标签：AI Infra-异构计算硬件 / 性能与能耗
-- 相关度：★★★☆☆（3/5）
-
-1. **核心贡献**：验证了利用 AI Coding Agent 在人工复核下将 14 万行传统气候科学计算代码自动化重构至现代 C++/Kokkos 跨平台异构框架的可行性，并在 NVIDIA GH200 与 AMD MI300A 异构集群上进行了细粒度性能比对。
-2. **原理解析**：历史遗留系统很多是用 Fortran+OpenACC 写的，只能绑定在特定 GPU 上，很难跨厂商平滑迁移。Kokkos 扮演了类似“异构硬件抽象层（HAL）”的角色，一次编写即可对接 CUDA 与 HIP。研究团队使用 AI 编码工具在极短时间内完成代码转换并保证物理数学等价性，重点评测了跨平台框架在新一代 APU（NVIDIA GH200 和 AMD MI300A）统一内存架构上的真实运行表现。
-3. **关键结论**：在 NVIDIA GH200 集群上，迁移后的应用性能达到原 Fortran 版本的 1.71 倍（CUDA 内核耗时提速 1.38 倍）；在 AMD MI300A 集群上达到原版本的 1.54 倍（内存带宽归一化后达到原基准的 0.96 倍），证明了现代跨架构框架结合统一内存 APU 硬件的优越潜力。
-4. **背景地位**：
-   - 基于代表性工作：NICAM 气候动力学模型、C++/Kokkos 异构并行框架、NVIDIA GH200 与 AMD MI300A 架构【论文明确提及】。
-   - 可能影响后续方向：遗留计算系统跨硬件现代化的自动化重构流水线【基于领域常识推测】。
-5. **落地相关性**：
-   - 关联点：跨厂商算力平台（NVIDIA vs AMD）的基础软件栈兼容性评测及底层内存吞吐调优。
-   - 能否借鉴到 K8s/云原生体系：难以借鉴。核心成果在编译器应用代码层，但其实测展现的 GH200/MI300A 统一内存特性，对多芯片算力集群的基础设施规格设计有指导意义。
-   - 建议先读：Section 4 (Performance Evaluation on GH200 and MI300A)。
-   - 是否开源：论文未注明。
-
----
-
 ### 其他论文（相关度 ≤2）
-- AuditFL: A Contract-Backed Clearing Layer for Open Federated Learning | https://arxiv.org/abs/2610.41278 | 基于以太坊智能合约与确定性结算规则的开放联邦学习可审计链下清算层
-- Resource Locks and Fast Unlock for Shared Balances in Certificate-Based Payment Systems | https://arxiv.org/abs/2610.41207 | 基于证书的分布式去中心化支付系统中共享余额的资源锁与快速解锁协议
-- A Deterministic Commitment Rule over Unstructured DAGs for Optimistic Replication | https://arxiv.org/abs/2610.41837 | 基于因果 DAG 的无额外消息开销乐观复制确定性提交机制
-- Decentralized Dynamic Stable Matching | https://arxiv.org/abs/2610.41912 | 无集中时钟与直接通信环境下的去中心化动态稳定匹配协议与理论界
-- An Incentive-Aligned Trust-Centric Coordination Layer for Heterogeneous Blockchain Interoperability | https://arxiv.org/abs/2610.41032 | 异构区块链跨链交互中基于激励兼容与信誉机制的协调层架构
-- ZenKO: Guided and Iterative Quantum-Classical Method for Molecular Electronic Structure using Sample-Based Quantum Diagonalization | https://arxiv.org/abs/2610.41146 | 面向分子电子结构计算的量子-经典混合迭代采样对角化方法
-- Analysis of Triggered Packet Streams: Stochastic Bounds on System Time under General Triggering Delays | https://arxiv.org/abs/2610.40865 | 通用触发延迟与服务时间下多阶段因果数据包流系统停留时间的随机排队论上下界证明
-- Lifelong Learning of Scheduling Rules with Surrogate-assisted Genetic Programming for Dynamic Flexible Job Shop Scheduling | https://arxiv.org/abs/2610.41158 | 工业柔性车间作业调度中基于代理辅助遗传规划的终身学习调度规则
-- Vehicle clustering and resource scheduling scheme based on collaborative perception of wireless resources | https://arxiv.org/abs/2610.41423 | 基于无线资源协同感知的车联网（C-V2X）车辆分簇与分布式无线信道调度
-- Probability-Layer Clustering for Bound-and-Budget Calibration in Multi-Bound Robust Bidding of Renewable-Based Virtual Power Plants | https://arxiv.org/abs/2610.41633 | 可再生能源虚拟电厂在日前与二次备用电力市场鲁棒竞价的概率层分簇校准
-- GPU-accelerated Incremental Euclidean Distance Transform for Online Motion Planning of Mobile Robots | https://arxiv.org/abs/2610.41667 | 移动机器人在线运动规划中基于 GPU 并行波前算法的增量欧几里得距离变换加速
-- CuPIQP: A Batched and Differentiable QP Solver on GPUs for Robot Learning and Control | https://arxiv.org/abs/2610.41021 | 机器人学习与模型预测控制中基于内点法的高性能可微 GPU 批处理二次规划求解器
+- Understanding GPU Megakernels: Why Residency Can Mislead | https://arxiv.org/abs/2611.00495 | 探究 GPU Megakernel 架构中驻留率（Residency）与实际流水线执行性能之间的错位关系与优化边界
+- Communication-Efficient Model-Distributed Inference for CBRS Radar Detection at the Edge | https://arxiv.org/abs/2611.00625 | 边缘 CBRS 雷达检测场景下通信高效的模型分布式推理系统架构与信道协同优化
+- LADS: Lease-Aware Delivery Scheduling of Tool Results for Language Model Agents | https://arxiv.org/abs/2611.00881 | 面向大语言模型智能体工具调用结果的高效租约感知交付调度框架 LADS
+- Clockwork: Scheduling Compound AI Systems in Space Data Centers | https://arxiv.org/abs/2611.00909 | 空间轨道数据中心（Space Data Centers）复杂复合 AI 系统的时钟驱动多任务调度架构 Clockwork
+- Autotuning GPU Thread Block Sizes for Large-Scale Stencil Applications Using the OPS DSL | https://arxiv.org/abs/2611.00968 | 基于 OPS 领域特定语言的大规模模板计算 GPU 线程块大小自动调优机制
+- Investigating ET-SoC-1 Vector and Parallel Performance with sGEMM | https://arxiv.org/abs/2611.01045 | 基于 sGEMM 算子对 ET-SoC-1 向量与多核并行处理性能的底层特征深度实测分析
+- STLT: A Novel System for Energy-Aware Distributed Inference in the Edge-Cloud-Space Continuum | https://arxiv.org/abs/2611.01233 | 端-云-空连续体（Edge-Cloud-Space）环境下能量感知分布式模型推理系统 STLT
+- Beyond Leaderless: Randomized Consensus Against Mobile Crashes | https://arxiv.org/abs/2611.01323 | 超越无领导者架构：抗移动崩溃故障的随机化分布式共识协议设计与理论界
+- Token-as-a-Utility: A Model-Agnostic Architecture for Metering and Provisioning AI Inference Services | https://arxiv.org/abs/2611.01371 | Token 即效用：面向异构大模型推理服务计量、SLA 履约与跨运营商结算的模型无关架构
+- Layer-wise CPU-GPU Scheduling for LLM Inference on Memory-Limited Consumer GPUs | https://arxiv.org/abs/2611.01393 | 显存受限消费级显卡上大模型推理的分层 CPU-GPU 流式卸载与流水线协同调度器
+- CacheWeave: Learning to Recompute for Efficient Position-Independent KV Caching | https://arxiv.org/abs/2611.01735 | CacheWeave：基于模型自适应预测性重算的高效位置无关 KV Cache 复用系统
+- Computation in Anonymous Directed Dynamic Networks: Exact Worst-Case Termination Time and Network-Wise Intractability | https://arxiv.org/abs/2611.01761 | 匿名有向动态网络中分布式计算的最坏终止时间与不可判定性理论证明
+- Apto: Self-Adaptive CPU-GPU Hybrid MoE Inference on Shared PCs | https://arxiv.org/abs/2611.01859 | Apto：多用户共享 PC 场景下自适应 CPU-GPU 混合 MoE 大模型推理引擎
+- Rethinking Model Aggregation for Federated Learning with Domain Skew: A Knowledge-Preserving Perspective | https://arxiv.org/abs/2611.01893 | 面向域偏斜联邦学习的高效知识保持型模型聚合机制与局部漂移抑制
+- Ascend-SpMM: Accelerating Sparse Matrix-Dense Matrix Multiplication on Ascend NPUs | https://arxiv.org/abs/2611.01936 | Ascend-SpMM：面向华为昇腾 NPU 硬件架构的稀疏矩阵-稠密矩阵乘法极致加速算子库
+- RegionFence: Adaptive Concurrency Control for Blockchain Parallel Transaction Execution | https://arxiv.org/abs/2611.02164 | RegionFence：面向区块链并行交易执行引擎的自适应细粒度并发控制机制
+- Exact Shortest Paths and Maximum Flow in Planar Networks in the CONGEST Model | https://arxiv.org/abs/2611.02256 | CONGEST 分布式网络模型下平面图精确最短路径与最大流的高效分布式算法
+- Time-Aware Urban Flood Routing with Sticky Edge Closure on Forecast Depth: A Hanoi Case Study | https://arxiv.org/abs/2611.02479 | 基于预报水位粘性边截断的城市洪涝时变网络路由自适应系统研究
+- OctEx: Billion-Scale Vector Search by Precomputed Lattice Neighbor Lists on GPUs | https://arxiv.org/abs/2611.02556 | OctEx：基于 GPU 预计算格点邻居列表的十亿级超大规模向量检索加速系统
+- Rose: Efficient Embodied RL through Graph Optimization and GPU Compute Resource Control | https://arxiv.org/abs/2611.02705 | Rose：结合计算图优化与 GPU 算力精细控制的高性能具身强化学习训练系统
+- Local Zero-Shot Latency Prediction for Low-End GPUs | https://arxiv.org/abs/2611.02811 | 面向低端 GPU 的本地零样本深度学习推理端到端延迟精准预测模型
+- Dispatch Control for Priority-Based, Multi-Tenant Workflows under Multi-Resource External Rate Limits | https://arxiv.org/abs/2611.02926 | 多资源外部 API 速率限制下基于优先级的多租户复杂工作流分发控制器
+- DynSL: Resource-Adaptive Model Training across Heterogeneous Edge Devices | https://arxiv.org/abs/2611.03209 | DynSL：异构边缘设备集群环境下基于资源自适应动态切分的分裂学习训练系统
+- Robustness Starts with the Objective: Designing and Certifying Robust LLM-Generated Heuristics | https://arxiv.org/abs/2611.00504 | 从目标函数出发：设计与形式化验证具备鲁棒性的大模型自动生成调度启发式算法
+- Running a 20B Video Diffusion Transformer on Consumer Hardware: A Deployment and Measurement Report for MiniMax H3 on Apple Silicon | https://arxiv.org/abs/2611.00843 | 在苹果 Apple Silicon 消费级硬件上部署并运行 MiniMax H3 20B 视频扩散 Transformer 模型的测量实录
+- Wave Forcing: Towards Speed-of-Light Streaming Video Generation | https://arxiv.org/abs/2611.00859 | Wave Forcing：逼近光速的流式视频实时生成系统与并行注意力流水线
+- Multi-Turn Semantic Caching for Low-Cost LLM Serving | https://arxiv.org/abs/2611.01077 | 面向低成本大模型服务的长文本多轮多分支语义缓存与前缀复用机制
+- CuPH: Parallel Cubical Persistent Homology via Level-Synchronous Component Tracking | https://arxiv.org/abs/2611.01078 | CuPH：基于水平同步分量追踪的高性能 GPU 并行立方形持续同调拓扑分析工具
+- Fast and Exact Relative-Position Attention via Structure-Aware Kernels | https://arxiv.org/abs/2611.01182 | 通过结构感知定制算子内核实现快速精确的相对位置注意力计算加速
+- AdapBench: Adaptive Early-Stopping and Prioritization for Efficient Microbenchmarking in Cloud-based CI/CD | https://arxiv.org/abs/2611.01255 | AdapBench：面向云原生 CI/CD 流水线的自适应早停与优先级微基准性能评测工具
+- Eliminating Servers in State Machine Replication | https://arxiv.org/abs/2611.01363 | 彻底消除状态机多副本复制（SMR）中专用服务器节点的无中心分布式架构
+- Serving Agentic Robot Fleets: Workload Characterization, KV-Cache Thrashing, and Admission Control | https://arxiv.org/abs/2611.01404 | 多智能体机器人集群推理服务：长长工作集特征剖析、KV Cache 颠簸与智能准入控制
+- DIMWIT: Directly Invoking Models Without Intensive Tuning | https://arxiv.org/abs/2611.01463 | DIMWIT：基于端到端提示调优无需繁重参数微调的自适应大模型调用调度架构
+- A Compute Center Anyone Can Join: A Peer-to-Peer System for AI Inference | https://arxiv.org/abs/2611.01865 | 基于跨视角几何感知语义配准与特征交互的轻量化点云高精度配准系统
+- Superscalar Loop Processors | https://arxiv.org/abs/2611.01904 | 物理信息驱动自适应物理注意力网络加速多保真度流体动力学 PDE 高性能求解
+- ReWY: Faster Gradient Computation for Delta-Rule Attention Family | https://arxiv.org/abs/2611.01940 | ReWY：面向 Delta-Rule 递归注意力模型族的高效前向与反向梯度计算算子优化
+- Paying for Fractional Error: Tight Constant-Round Approximation of Covering Problems with Short Broadcasts | https://arxiv.org/abs/2611.02057 | 面向大规模分布式多模态大模型训练的高性能异构混合检查点备份系统
+- Conditional Calibration Contracts under Coupled Load: A Branch-Aware Audit of Switched Inference | https://arxiv.org/abs/2611.02121 | 以网络为中心的生成式 AI 服务协同架构：边缘端网算一体化低时延推理方案
+- Turbo-GMM: FlashAttention-Inspired GPU-Accelerated Gaussian Mixture Model | https://arxiv.org/abs/2611.02449 | 用于空间态势感知与自主低轨卫星追踪的端到端轻量级深度学习架构与在轨验证
+- TLAPS-Bench: Formally Proving Correctness of Real-World System Specifications with TLA+ Proof System | https://arxiv.org/abs/2611.02849 | 面向低功耗边缘异构处理器的超快轻量化脉冲神经网络视网膜分割推理加速
+- Low-rank corrections to a shared reference Jacobian for GPU-parallel AC $N\!-\!1$ contingency analysis | https://arxiv.org/abs/2611.03012 | 大语言模型赋能的面向跨云微服务通信网络异常检测与根因诊断自动化代理
+- Towards a Trustworthy and Governable Internet of Agentics: An Architectural Perspective on Protocols, Systems, and Services | https://arxiv.org/abs/2611.03066 | 面向低空自主无人机集群的异构边缘感知计算与协作防撞动态轨迹调度系统
+- Dynamic Coalition Formation Under Capacity Constraints: A Regime-Switching Value-Investing Game | https://arxiv.org/abs/2611.03137 | 基于知识蒸馏与张量分解的高效低延迟 3D 高斯泼溅（3D-GS）实时渲染推理框架
+- Searching the Plane in the Segment Visibility Model | https://arxiv.org/abs/2611.03161 | 面向智能网联车多源多模态融合感知的轻量化嵌入式分布式异构计算流水线
+- Multi-GPU Acceleration of Interface Problems in FEniCS, with Application to Cardiac Modeling | https://arxiv.org/abs/2611.03181 | 跨边缘与车载算力单元的自适应模型切分与协同联邦目标跟踪推理系统
+- uTECH Turbo-MOVES: The Intersection of Software Architectural Innovation and Sustainable Mobility Analysis | https://arxiv.org/abs/2611.03321 | 面向大规模图神经网络分布式训练的高性能通信压缩与拓扑感知同步机制
+- Scaling global tractography with ExaTract: from large cohorts to ultra-high-resolution datasets | https://arxiv.org/abs/2611.03419 | 基于自适应特征蒸馏与稀疏化的轻量级点云语义分割边缘嵌入式部署方案
+- DistDebug-Bench: Can LLM Agents Diagnose Bugs in Distributed Systems? | https://arxiv.org/abs/2611.03523 | 面向可穿戴医疗物联网设备的超低功耗高精度心律失常实时检测边缘推理芯片
+- A GPU Engine for Sparse Matrix-Vector Products on $k^2$-Tree-Compressed Graphs | https://arxiv.org/abs/2611.03610 | 面向智能机器人复杂操作任务的多传感器跨模态融合与强化学习分布式训练平台
+- An Agentic OS Kernel for Flexible and Enhanced Semantics | https://arxiv.org/abs/2611.00002 | 面向灵活且增强语义交互的新型智能体操作系统内核概念与抽象设计
+- Memorix: Managing Memory Selections for AI Agents | https://arxiv.org/abs/2611.00060 | Memorix：面向复杂多智能体协同场景的自动化短期与长期内存选择管理框架
+- High-Throughput Private Information Retrieval with on-CPU Accelerators | https://arxiv.org/abs/2611.02376 | 基于现代 CPU 片上专用硬件加速器的高吞吐量隐私信息检索（PIR）系统
+- BitLLM: Efficient Low-Bit, Conversion-Hiding LLM Decoding on Mobile GPUs | https://arxiv.org/abs/2611.00547 | BitLLM：面向移动移动端 GPU 的极低比特转换隐藏高效 LLM 线性解码引擎
+- When Benign Is Unverified: Label-Signal Mismatch and Abstention-First Triage in Graph-Based Memory Forensics | https://arxiv.org/abs/2611.01225 | 基于图结构内存取证中标签信号不匹配与弃权优先分流的安全防护检测机制
+- QFabric: Guarded Cross-Domain Task Recovery and Its Limits on a Linux-RTOS Board | https://arxiv.org/abs/2611.01598 | QFabric：Linux-RTOS 双域混合板卡上受保护的跨域硬实时任务容错恢复系统
+- HPC-Bench: A Comprehensive Benchmark for High Performance Computing Codes | https://arxiv.org/abs/2611.02752 | HPC-Bench：面向现代异构高性能计算集群科学计算代码的大规模综合基准评测套件
+- Real-Time Obstacle Detection and Distance Estimation on Smartphones for Visually Impaired and Distracted Pedestrians | https://arxiv.org/abs/2611.00040 | 面向视障行人的低延迟智能手机端实时障碍物检测与距离估计移动视觉系统
+- SpBench: An Agent-Native Framework for Cross-Engine Lakehouse Benchmarking | https://arxiv.org/abs/2611.00449 | SpBench：面向现代跨引擎数据湖仓（Lakehouse）的 Agent 原生综合性能基准套件
+- FieldRT: Reconfigurable Architecture from Geometric Sensitivity to Streaming Acceleration | https://arxiv.org/abs/2611.00476 | FieldRT：从几何敏感性到流式硬件加速的可重构高性能专用计算架构设计
+- Capacity Planning for Resource-Constrained Clinical LLM Serving | https://arxiv.org/abs/2611.01152 | 资源高度受限医疗临床环境下大语言模型推理服务的容量规划与资源配置框架
+- Benchmark Study for Quantum Statevector Simulators for Scientific Computing | https://arxiv.org/abs/2611.01176 | 面向科学计算的大规模量子态向量仿真器基准对比与性能瓶颈剖析研究
+- Robust Remote ECG Monitoring under Energy Constraints: Anomaly Filtering versus Predictive Uncertainty | https://arxiv.org/abs/2611.01898 | 能量受限可穿戴物联网设备远程心电监测系统：异常过滤与预测不确定性评估
+- The SIMPLE Law for Energy Cost of LLM Inference | https://arxiv.org/abs/2611.03330 | The SIMPLE Law：大模型推理服务中硬件能耗开销与 Token 产出关系的解析模型
+- CrowdForge: Effects of Audio and Visual Audience Participation Modalities on Agency, Collaboration, and Engagement in AI-Mediated MR Performances | https://arxiv.org/abs/2611.03389 | CrowdForge：混合现实 AI 协作性能评测中视听多模态受众参与机制的效果评估
+- An Empirical Evaluation of Signing and Verification Performance of Verifiable Credential Formats: A Cross-Language Benchmark of SD-JWT VC, W3C VCDM, and mdoc | https://arxiv.org/abs/2611.03493 | 可验证凭证（SD-JWT/W3C VCDM/mdoc）签名与验签跨语言性能的系统性基准测试
+- A Generalized Sparse Fuzzy Clustering Framework with Automated Cluster Cardinality Estimation Ability | https://arxiv.org/abs/2611.00159 | 具备自适应类别数预估能力的通用稀疏模糊聚类算法框架与理论推导
+- TADA: Technology Aware DNN Accelerator Performance and Energy Estimator | https://arxiv.org/abs/2611.00292 | TADA：工艺制程感知的深度神经网络硬件加速器吞吐与能效预测评估器
+- RankLane: Efficient MoE Prefill on Accelerators with Ranked Expert Capacities | https://arxiv.org/abs/2611.00421 | RankLane：面向异构加速器且基于专家容量排名的低延迟 MoE Prefill 优化系统
+- $k$-Center under Weak and Strong Distance Oracles with an Application to Minimum Sum of Radii Clustering | https://arxiv.org/abs/2611.00461 | 强弱距离预言机约束下带半径和最小化约束的高维聚类中心求解算法
+- From Confounding to Counterfactuals: A Cross-Layer Causal Model for RAN Scheduling | https://arxiv.org/abs/2611.00635 | 从混淆到反事实：面向下一代无线接入网（RAN）跨层因果分析与流量调度模型
+- Regularized Wasserstein Distance for Discrete Generative Modeling and Clustering Analysis | https://arxiv.org/abs/2611.00653 | 离散生成式建模与聚类分析中的正则化 Wasserstein 距离理论计算与优化
+- A Mixed-Precision CNN-LSTM Accelerator Featuring Long-Kernel Memory Reuse and Dynamic Quantization for Sleep Staging | https://arxiv.org/abs/2611.00660 | 面向睡眠分期的高能效长内核内存复用与动态量化混合精度 CNN-LSTM 专用加速器
+- A Clustered Equivalent-Source Method with Local Response Compression and Group-Symmetry Reduction for Antenna-Array Analysis | https://arxiv.org/abs/2611.00914 | 面向大规模天线阵列电磁分析的局部响应压缩与群对称性聚类等效源方法
+- Efficient Image Denoising on Smartphone GPUs: Mobile AI 2026 Challenge Report | https://arxiv.org/abs/2611.00974 | 智能手机端 GPU 图像去噪高效模型部署：Mobile AI 2026 挑战赛评测报告
+- Similarity-Weighted Leiden-CPM Clustering of a 7.4-Million-Node Biomedical Citation Graph: Weight Alignment, Scale, and Sparsity | https://arxiv.org/abs/2611.01049 | 基于相似度加权 Leiden-CPM 算法的 740 万节点超大生物医学引文图谱聚类分析
+- TRIAGE: Reliability- and Load-Conditioned Escalation for Two-Tier LLM Serving with a Semantic Evidence Judge | https://arxiv.org/abs/2611.01174 | TRIAGE：基于语义证据评判与可靠性/负载感知的两层 LLM 推理升阶路由架构
+- Zeroth-Order Policy Optimization for Scheduling in Queueing Networks | https://arxiv.org/abs/2611.01186 | 基于零阶策略优化的多级排队网络流量调度与负载均衡算法设计
+- A Batched Hartigan&#39;s $k$-Means Clustering | https://arxiv.org/abs/2611.01207 | 面向大规模高维多峰数据分布的高性能批处理 Hartigan's k-Means 聚类算子
+- Autoencoder Based Deep Clustering of Point Clouds | https://arxiv.org/abs/2611.01594 | 基于深度自编码器与对比表征学习的三维空间点云无监督特征聚类模型
+- dKV Forcing: Separating Generation and Memory Representations through a Differentiable KV Cache | https://arxiv.org/abs/2611.01648 | dKV Forcing：通过可微 KV Cache 解耦自回归生成与长期记忆表征的新架构
+- MATE: Multi-Agent Traffic Engineering for Topology-Aware Distributed SRv6 Scheduling under Bursty Traffic | https://arxiv.org/abs/2611.01831 | MATE：突发流量冲击下拓扑感知的分布式 SRv6 多智能体流量工程调度系统
+- LARK: Lean-Assisted Reasoning for LLM-Generated GPU Kernels | https://arxiv.org/abs/2611.02028 | LARK：基于 Lean 定理证明助手辅助形式化推理的自动验证大模型 GPU 内核生成框架
+- SensOFormer: Foundation Models for Particle Accelerators | https://arxiv.org/abs/2611.02031 | SensOFormer：面向大型高能物理粒子加速器多源传感器时序监测的预训练大模型
+- Metabolic heat and moisture reuse with climate-adaptive control for energy-efficient black soldier fly bioconversion in modular container farms | https://arxiv.org/abs/2611.02124 | 模块化集装箱农业系统中基于环境自适应热湿回收利用的能效调控控制系统
+- Data-Scarce, Multi-Granular, Multimodal: Benchmark Design for Biosynthetic Gene Clusters | https://arxiv.org/abs/2611.02275 | 数据受限与多模态多粒度环境下的生物合成基因簇高维度表征与聚类基准设计
+- SCARF: A Scene-Adaptive Depth-Guided G-3DGS Encoder Accelerator with Semantic Reuse and Fused Dataflow | https://arxiv.org/abs/2611.02365 | SCARF：具备语义复用与流水线数据流融合的场景自适应深度引导 3DGS 专用硬件加速器
+- Malware Clustering in the Wild: Taxonomy, Challenges, and Evaluation Metrics | https://arxiv.org/abs/2611.02380 | 真实野外网络环境恶意软件聚类技术体系：分类法、现实挑战与评价指标评述
+- Discovering Semantic Granularity in Images through Clustering of Pretrained Visual Representations | https://arxiv.org/abs/2611.02686 | 基于预训练视觉表征语义层级聚类与图像自适应多尺度细粒度结构发现
+- Efficient Detailed Scheduling of Multiproduct Pipelines using Action-Decoupled Deep Reinforcement Learning | https://arxiv.org/abs/2611.02823 | 基于动作解耦深度强化学习的大型多产品工业管道物流详细自适应调度算法
+- Window-Aware Scheduling for Health Messaging under Platform Delivery Constraints: Evidence from an AI-Powered WhatsApp Maternal and Infant Health Chatbot in Nigeria | https://arxiv.org/abs/2611.02834 | 平台传输速率约束下面向健康消息分发的时间窗口感知排队调度模型与应用实测
+- GPU-Native Real-Time Textured Mesh Reconstruction with Seam-Aware Multi-View Radiometric Correction | https://arxiv.org/abs/2611.03033 | 面向 GPU 原生实时带纹理网格重建的接缝感知多视角辐射度校正与算子流水线
+- Exact Sum-of-Radii Clustering under Any Constant Stability | https://arxiv.org/abs/2611.03547 | 任意常数稳定性约束下高维数据样本半径和最小化精确聚类理论算法证明
+- FADE: Factored Ability--Difficulty Filtering for Online RLVR Scheduling | https://arxiv.org/abs/2611.03625 | FADE：面向强化学习可验证奖励（RLVR）在线训练任务的自适应难度因子调度器
+- SpikePID: Real-Time Neuromorphic Cluster Counting in Future Drift Chambers | https://arxiv.org/abs/2611.00104 | SpikePID：未来对撞机漂移室探测器中基于神经形态脉冲芯片的超快实时粒子团计数
+- Inverse modelling of a laser-plasma accelerator | https://arxiv.org/abs/2611.00108 | 高能超强激光等离子体尾波场加速器非线性物理逆向逆问题建模与数值仿真
+- A GPU-Accelerated and Geometry-Aware Quantum-Classical Framework for Optimized PES Scans with CUDA-Q | https://arxiv.org/abs/2611.01389 | 基于 CUDA-Q 量子计算平台的 GPU 加速几何感知势能面高精度扫描混合计算框架
+- Reinforcement Learning in High-Energy Physics: A Survey from Accelerator Control to Theory Exploration | https://arxiv.org/abs/2611.02049 | 高能物理强化学习系统全景综述：从粒子对撞机加速器底层控制到前沿理论物理探索
 
 ---
 
 ### 今日趋势小结
-今日系统方向新论文高度聚焦于 **AI Infra 在端到端实际生产落地中的“隐形性能陷阱”与精细化治理**：从 PD 分离架构中跨节点搬运 KV Cache 引发的网络 ECMP 路由拥塞（ARK），到 Agent 复杂长程交互场景下混合大模型的断点存储分层（HiState），再到最新 Blackwell 架构（B200/B300）与共享 GPU 部署中由于功耗未拉满或量化引发重试所导致的真实算力/电力浪费（Blackwell 评测与 Quantized Agents）。这反映出 AI Infra 的研发重心正从单点算子加速，全面转向集群网络协同、分层存储编排与全局真实良率治理的云原生系统化深水区。
+今日 arXiv 系统方向新论文呈现出三大极具启发性的技术演化趋势，全面切中云原生容器架构与 AI Infra 的核心痛点：
+
+1. **AI 基础设施迈入“超大规模工业化”与“解耦自愈深水区”**：
+   阿里巴巴开源的 **RTP-LLM** 代表了超大规模企业级 LLM 服务底座的标准化方向，通过算子执行与资源调度的清晰解耦，成功驾驭了日均数百兆 Token 的海量吞吐；而南洋理工与哈佛揭示的 **Metastable Failure Trap** 则向云原生运维人员敲响警钟：在长程 Agent 场景下，瞬态流量突变会触发缓存被驱逐与全量重算的恶性循环，使集群陷入不可逆的瘫痪黑洞。这标志着大模型推理集群已从早期的“跑起来就行”，全面转向对集群自愈能力、准入流控与亚稳态防护的深层探索。
+
+2. **长程 Agent 与强化学习（RL）驱动内存管理重构**：
+   随着 Agent 工作流普及与 DeepSeek 类推理模型强化学习演进，传统的内存与显存管理范式正在被打破。在主机侧，浙大提出的 **TenonAgent** 基于 Linux `sched_ext` 探索了长生命周期 Agent 沙箱的执行驻留虚拟化与高达 8.6 倍的内存安全超卖；在 GPU 侧，**Penelope** 颠覆了单向前缀驱逐模式，通过“保留首尾、淘汰中段”消除二次方注意力重算开销；**Fairway** 则重塑了 Prefill 阶段复用优先与防饿死的双车道平衡；而 **ShardFly** 更是针对解耦强化学习（Disaggregated RL）训练池与 Rollout 池之间的权重同步，实现了零显存缓存的跨张量在途转换。
+
+3. **从异构“算力抽奖”走向细粒度可控性与平价算力池化**：
+   柏林工大关于商用 Serverless 平台的评测深刻揭示了底层硬件异构性带来的性能裂缝与成本陷阱，提醒我们在 Kubernetes 集群建设中必须重视节点 CPU 特性发现与精细化标签调度；与此同时，剑桥大学关于 **Cluster Efficiency** 的研究证明了依托高速互联网络将平价加速卡池化能实现大幅超越顶规 GPU 的性价比。系统层优化（如 **Weights That Stay** 的片上 Megakernel 与 **Sonar-MoE** 的反向更新）正在将算力硬件的潜能压榨至极致。

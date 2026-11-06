@@ -14,6 +14,7 @@ import sys
 import os
 import re
 import json
+import time
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -28,14 +29,18 @@ KEYWORDS = [
     "ebpf", "sandbox", "mlsys", "ai infrastructure"
 ]
 
-def fetch_url(url, timeout=15):
+def fetch_url(url, timeout=15, retries=3):
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.read().decode("utf-8", errors="replace")
-    except Exception as e:
-        sys.stderr.write(f"Error fetching {url}: {e}\n")
-        return ""
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(1.0)
+                continue
+            sys.stderr.write(f"Error fetching {url}: {e}\n")
+            return ""
 
 def parse_listing(html):
     """
@@ -94,7 +99,7 @@ def fetch_abstract_and_affiliations(arxiv_id):
     Fetches abstract page https://arxiv.org/abs/{id} and HTML page if needed.
     """
     abs_url = f"https://arxiv.org/abs/{arxiv_id}"
-    html = fetch_url(abs_url)
+    html = fetch_url(abs_url, timeout=10, retries=3)
     
     abstract = ""
     abs_match = re.search(r'<blockquote class=[\'"]abstract mathjax[\'"]>\s*<span class=[\'"]descriptor[\'"]>Abstract:</span>\s*(.*?)\s*</blockquote>', html, re.DOTALL)
@@ -103,7 +108,7 @@ def fetch_abstract_and_affiliations(arxiv_id):
     
     affiliations = []
     html_url = f"https://arxiv.org/html/{arxiv_id}"
-    full_html = fetch_url(html_url, timeout=5)
+    full_html = fetch_url(html_url, timeout=3, retries=1)
     if full_html:
         affil_matches = re.findall(r'<span class=[\'"]ltx_institution[\'"]>([^<]+)</span>', full_html)
         if not affil_matches:
@@ -118,6 +123,7 @@ def fetch_abstract_and_affiliations(arxiv_id):
                     seen_affil.add(clean_af)
                     affiliations.append(clean_af)
                     
+    time.sleep(0.2)
     return abstract, affiliations
 
 def main():

@@ -79,6 +79,7 @@ def main():
     
     # Read existing history rows from README if present
     existing_rows = []
+    old_readme = ""
     if os.path.exists(readme_path):
         with open(readme_path, "r", encoding="utf-8") as f:
             old_readme = f.read()
@@ -93,20 +94,32 @@ def main():
     # Generate current row
     new_row = f"| **{date_str}** | {paper_count} 篇 | {table_summary} | [查看全文](docs/{date_str}.md) |\n"
 
+    all_rows = [new_row] + existing_rows
+    def extract_date(row):
+        m = re.search(r'\*\*(\d{4}-\d{2}-\d{2})\*\*', row)
+        return m.group(1) if m else "1970-01-01"
+    all_rows.sort(key=extract_date, reverse=True)
+
+    max_existing_date = max([extract_date(r) for r in existing_rows], default="1970-01-01")
+    latest_block_match = re.search(r'(## 📌 最新日报\s*\n.*?\n)(?=## 📅 历史归档)', old_readme, re.DOTALL)
+    if date_str >= max_existing_date or not latest_block_match:
+        latest_section = f"""## 📌 最新日报
+- **[{date_str} 日报](docs/{date_str}.md)**（入选 {paper_count} 篇）：{latest_summary}
+"""
+    else:
+        latest_section = latest_block_match.group(1).rstrip() + "\n"
+
     readme_content = f"""# arXiv Systems Daily Digest 🚀
 
 每日自动追踪并深度解读系统方向与 AI Infra 领域的最新 arXiv 论文。
 
 读者定位为从事「容器架构与运行时、Kubernetes 编排、AI 基础设施（分布式训练/推理/GPU集群）」的工程师与研究者。
 
-## 📌 最新日报
-- **[{date_str} 日报](docs/{date_str}.md)**（入选 {paper_count} 篇）：{latest_summary}
-
+{latest_section}
 ## 📅 历史归档
 | 日期 | 入选篇数 | 重点内容提要 | 报告链接 |
 | :--- | :---: | :--- | :--- |
-{new_row}{''.join(existing_rows)}
----
+{''.join(all_rows)}---
 *由 Google Antigravity 定时自动化流水线每日早晨自动分析并生成推送。*
 """
 

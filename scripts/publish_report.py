@@ -18,6 +18,9 @@ def parse_report_highlights(report_content):
     """
     Extracts paper count and list of must-read highlights from the report.
     """
+    if "arXiv 无新增论文" in report_content:
+        return "0", []
+
     count_match = re.search(r'入选深读[*：:\s]*(\d+)\s*篇', report_content)
     paper_count = count_match.group(1) if count_match else "多"
 
@@ -65,6 +68,9 @@ def main():
     if must_reads:
         table_summary = "<br>".join([f"• <b>{item['title']}</b>: {item['summary']}" for item in must_reads])
         latest_summary = "\n" + "\n".join([f"  - **{item['title']}**: {item['summary']}" for item in must_reads])
+    elif "arXiv 无新增论文" in report_content:
+        table_summary = "周末 / 节假日 arXiv 无新增论文"
+        latest_summary = " 周末 / 节假日 arXiv 无新增论文"
     else:
         table_summary = "系统方向前沿文献深度解读"
         latest_summary = " 系统方向前沿文献深度解读"

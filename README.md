@@ -5,11 +5,24 @@
 读者定位为从事「容器架构与运行时、Kubernetes 编排、AI 基础设施（分布式训练/推理/GPU集群）」的工程师与研究者。
 
 ## 📌 最新日报
-- **[2026-11-09 日报](docs/2026-11-09.md)**（入选 0 篇）： 周末 / 节假日 arXiv 无新增论文
+- **[2026-11-11 日报](docs/2026-11-11.md)**（入选 12 篇）：
+  - **Lazy-Pulling Impossibility**: 揭示 Kubernetes 与 stargz/SOCI/Nydus 镜像按需拉取在模型服务化中的两大不可行性，提出不改 CRI 的零误差硬约束缓存治理方案。
+  - **Firepool**: LinkedIn 生产级 H200 集群热 GPU 容量代理框架，通过同质底模与零显存 Standby 占位 Pod 将 Agent/RL 启动延迟从 59s 骤降至 3.5s。
+  - **MoE Dispatch Offloading**: NVIDIA 官方团队在 GB300 NVL72 上的 NCCL-EP 突破，通过 GPU-Friendly Descriptors 与 CPU 线程卸载消除双批流水线裸露通信，提升 vLLM 吞吐达 42%。
+  - **MTRDMA**: 湖南大学提出轻量级多租户 RDMA 控制面隔离方案，利用原子共享内存与 rdma-cgroup 消除吵闹邻居对网卡微架构缓存的耗尽，保护容器吞吐。
+  - **Evolving Infra**: UC Berkeley 与 MIT 等联合推出 Agent 自适应大模型服务化框架，在 256 卡 GB300 集群上实现算力分配与 KV Cache 解耦自适应，P95 首字延迟降低 14 倍。
+  - **NCCL-BOT**: NVIDIA 集合通信团队重构 NCCL 静态开销模型，以在线多臂老虎机（MAB）动态闭环实测延迟，攻克拓扑与拥塞下的次优通信算法选择难题。
+  - **The Storage View Of KV Cache**: UT Austin 与 IBM 联合对 11 类生产负载的底层 KV Cache 展开存储行为刻画，提出跨单/多会话的精简 3 信号存储管理抽象。
+  - **Relief**: 香港大学与香港科大研发的专家并行 MoE 逐步实时负载均衡引擎，打破传统线性规划求解瓶颈，以 CUDA 算子及片上硬件块恢复 37.3% 的算力利用率。
+  - **OOM-MoE**: 香港科技大学（广州）针对全参数 MoE 训练的内存-执行协同卸载框架，通过参数预取流水线与显存复用极大降低跨互连传输等待。
+  - **Custom GPSIMD on Trainium**: UCLA 丛京生团队针对 AWS Trainium 3 构建首个 C++ 自定义 GPSIMD 算子编译工具链，加速 DeepSeek-V4.1 Engram 稀疏检索。
+  - **AdaOffload**: UC Berkeley Sky Computing 团队打造的异构多 GPU 混合专家卸载推理系统，全链路 NUMA 感知调度使超大 MoE 吞吐提升最高 15.5 倍。
+  - **Wasm Edge Cold-Start**: 根特大学-imec 研发的 WebAssembly 边缘调度器，联合优化产物缓存局部性与网络路由距离，降低边缘端到端冷启动延迟 40.8%。
 
 ## 📅 历史归档
 | 日期 | 入选篇数 | 重点内容提要 | 报告链接 |
 | :--- | :---: | :--- | :--- |
+| **2026-11-11** | 12 篇 | • <b>Lazy-Pulling Impossibility</b>: 揭示 Kubernetes 与 stargz/SOCI/Nydus 镜像按需拉取在模型服务化中的两大不可行性，提出不改 CRI 的零误差硬约束缓存治理方案。<br>• <b>Firepool</b>: LinkedIn 生产级 H200 集群热 GPU 容量代理框架，通过同质底模与零显存 Standby 占位 Pod 将 Agent/RL 启动延迟从 59s 骤降至 3.5s。<br>• <b>MoE Dispatch Offloading</b>: NVIDIA 官方团队在 GB300 NVL72 上的 NCCL-EP 突破，通过 GPU-Friendly Descriptors 与 CPU 线程卸载消除双批流水线裸露通信，提升 vLLM 吞吐达 42%。<br>• <b>MTRDMA</b>: 湖南大学提出轻量级多租户 RDMA 控制面隔离方案，利用原子共享内存与 rdma-cgroup 消除吵闹邻居对网卡微架构缓存的耗尽，保护容器吞吐。<br>• <b>Evolving Infra</b>: UC Berkeley 与 MIT 等联合推出 Agent 自适应大模型服务化框架，在 256 卡 GB300 集群上实现算力分配与 KV Cache 解耦自适应，P95 首字延迟降低 14 倍。<br>• <b>NCCL-BOT</b>: NVIDIA 集合通信团队重构 NCCL 静态开销模型，以在线多臂老虎机（MAB）动态闭环实测延迟，攻克拓扑与拥塞下的次优通信算法选择难题。<br>• <b>The Storage View Of KV Cache</b>: UT Austin 与 IBM 联合对 11 类生产负载的底层 KV Cache 展开存储行为刻画，提出跨单/多会话的精简 3 信号存储管理抽象。<br>• <b>Relief</b>: 香港大学与香港科大研发的专家并行 MoE 逐步实时负载均衡引擎，打破传统线性规划求解瓶颈，以 CUDA 算子及片上硬件块恢复 37.3% 的算力利用率。<br>• <b>OOM-MoE</b>: 香港科技大学（广州）针对全参数 MoE 训练的内存-执行协同卸载框架，通过参数预取流水线与显存复用极大降低跨互连传输等待。<br>• <b>Custom GPSIMD on Trainium</b>: UCLA 丛京生团队针对 AWS Trainium 3 构建首个 C++ 自定义 GPSIMD 算子编译工具链，加速 DeepSeek-V4.1 Engram 稀疏检索。<br>• <b>AdaOffload</b>: UC Berkeley Sky Computing 团队打造的异构多 GPU 混合专家卸载推理系统，全链路 NUMA 感知调度使超大 MoE 吞吐提升最高 15.5 倍。<br>• <b>Wasm Edge Cold-Start</b>: 根特大学-imec 研发的 WebAssembly 边缘调度器，联合优化产物缓存局部性与网络路由距离，降低边缘端到端冷启动延迟 40.8%。 | [查看全文](docs/2026-11-11.md) |
 | **2026-11-09** | 0 篇 | 周末 / 节假日 arXiv 无新增论文 | [查看全文](docs/2026-11-09.md) |
 | **2026-11-08** | 0 篇 | 周末 / 节假日 arXiv 无新增论文 | [查看全文](docs/2026-11-08.md) |
 | **2026-11-07** | 0 篇 | 周末 / 节假日 arXiv 无新增论文 | [查看全文](docs/2026-11-07.md) |

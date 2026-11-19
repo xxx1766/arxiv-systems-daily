@@ -5,23 +5,24 @@
 读者定位为从事「容器架构与运行时、Kubernetes 编排、AI 基础设施（分布式训练/推理/GPU集群）」的工程师与研究者。
 
 ## 📌 最新日报
-- **[2026-11-17 日报](docs/2026-11-17.md)**（入选 12 篇）：
-  - **NVFP4-MLA**: 英伟达官方首次将 DeepSeek-R1 / Kimi-K3 的 MLA 隐式 KV 缓存存储与注意力计算全栈推向 FP4，二维量化消除反量化开销，Rubin GPU 上注意力算子提速高达 2.82 倍。
-  - **Olmo-core MoE**: AI2 与华盛顿大学重构 MoE 分布式训练，首创 NVSHMEM 行级专家并行并消灭 Token 置换开销，实现计算与通信全零同步重叠。
-  - **Productive Preemption**: 新加坡国立大学与 Sea AI Lab 攻克长输出推理模型（Reasoning LLM）分钟级 KV Cache 占满显存引发的反复换入换出抖动危机，重塑生产性抢占调度。
-  - **Linux EEVDF Hrtick Fix**: Ampere Computing 工程师修复 Linux 内核 EEVDF 调度器同任务重选时丢失 hrtick 重置的缺陷，捍卫容器 CPU 份额隔离，补丁已正式合入 Linux 主线。
-  - **GNoF (GPU NVMe-oF)**: 国防科大提出低 SM 开销的 GPU 原生 NVMe-oF 完成路径，打破 RDMA 远程存储 10~100 微秒往返对 SM 的自旋轮询绑架，列存 I/O 提速 10~22 倍。
-  - **KernelArmor**: 英伟达与斯坦福联合推出首个结合 SMT 验证与 Agentic 闭环的 CUDA 安全系统，全自动验证 Tensor Cores 与异步拷贝安全性，覆盖 1,370 个生产级算子。
-  - **CertiSum**: 多伦多大学与英伟达联合攻克低精度训练非确定性，在 NVIDIA GB200 与 AMD MI350X 跨芯片及不同 DP/TP/CP 拓扑下实现按位完全一致（Bit-for-Bit）的 MXFP4 训练。
-  - **Bipartible Pattern**: 戴尔科技在 CANOPIE-HPC 提出 Bipartible 模式，透明拦截容器 HTTP 流量并无缝旁路至 InfiniBand 高速总线，零改造赋能云原生超算与 AI 微服务。
-  - **Nemotron Serving**: 英伟达针对连续批处理负载动态漂移，提出状态感知调度器，在持久常驻 Megakernels 与算子融合链之间极速切换，大幅跃升 ASR 大模型吞吐。
-  - **Cache Savings Leak**: 约翰斯·霍普金斯大学揭露多租户 LLM 推理前缀缓存的新型时序侧信道，证明只要调度器不空转，节省的算力时延必将直接被下游请求探测利用。
-  - **EPD Disaggregation Energy**: 墨尔本大学 Buyya 团队系统评测多模态大模型视觉编码、Prefill 与 Decode（EPD）阶段分离与动态调频，证明合理阶段切分能削减 13.3%~37.0% 显卡能耗。
-  - **Grace Blackwell Benchmarking**: 特拉华大学与英伟达在双卡 Grace Blackwell 桌面集群上实测 17 个开源大模型，证明在 200 GbE 无 NVLink 条件下张量并行吞吐与时延仍全面胜过流水线并行。
+- **[2026-11-19 日报](docs/2026-11-19.md)**（入选 12 篇）：
+  - **Readie**: UIUC、字节跳动与哥伦比亚大学联手打造面向 AI Agent 的超低时延代码执行沙箱，突破胖镜像与定制快照冷启动限制，毫秒级就绪赋能智能体高并发交互。
+  - **XM-Sparse**: 香港科大与 Netpreme 基于 SGLang 在纵向扩展内存池上实现稀疏注意力服务，TMA 算子流水与 GPU DMA 协同，Decode 吞吐超越 PCIe 方案高达 4.98 倍。
+  - **TAILROLL**: 华为加研与墨尔本大学 Buyya 团队攻坚强化学习后训练（RL Post-Training）Rollout 长尾阻塞瓶颈，无状态在途迁移与 GRPO 提前截断削减气泡 21%~74%。
+  - **Gemma 4 Global-KV**: 免改任何底层 Attention 算子！利用步长重叠视图在 vLLM 中单次存储 Gemma 4 全局 KV 缓存，双卡 PD 分离实测 Decode 吞吐飙升 1.38 倍。
+  - **HyCoInfer**: 清华大学在 cs.OS 推出 GPU-FPGA 云边协同大模型推理系统，云端 Prefill 与边端 FPGA Decode 弹性流水，RVQ 压缩抗住广域网限制，吞吐达纯云端 4.11 倍。
+  - **Communicate the Change**: Mila 与麦吉尔大学在 MoE 专家并行中开创激活值差量压缩传输，跨节点 All-to-All 物理通信量削减 4 倍，无损保持大模型收敛精度。
+  - **NPU Graph Superoptimization**: 华为海外团队首次将 Mirage 张量图超优化器迁移至华为昇腾 910B3 与 Triton 编译生态，融合算子性能最高飙升 87.0%。
+  - **GPU LSU Security & MPS Isolation**: 卢森堡大学逆向揭露 GPU 加载存储单元硬件缺陷，在 NVIDIA MPS 多租户混部模式下单卡竞争导致生产矩阵乘法性能雪崩 750 倍。
+  - **SPICE**: Mila、索邦大学与 CNRS 提出基于稀疏参数 Gossip 的去中心化大模型预训练协议，摆脱昂贵全局集合通信，在恶劣广域网环境下稳定收敛。
+  - **SpecSearch**: UIUC 团队建立硬件感知执行模型，自动化探索投机解码（Speculative Decoding）在不同 GPU 架构与内存容量下的 Pareto 最优调度配置。
+  - **Infra Energy Telemetry**: 欧洲顶尖超算与意大利国家科研所开源涵盖 Kubernetes 微服务、分布式存储与 LLM 推理的 1Hz 生产级全栈高精度能耗数据集。
+  - **CheckCo**: 动视暴雪旗下 King 团队提出在流处理常规 Checkpoint 周期内无停顿重平衡倾斜数据流，彻底根除热点 Key 引发的 Worker 瘫痪。
 
 ## 📅 历史归档
 | 日期 | 入选篇数 | 重点内容提要 | 报告链接 |
 | :--- | :---: | :--- | :--- |
+| **2026-11-19** | 12 篇 | • <b>Readie</b>: UIUC、字节跳动与哥伦比亚大学联手打造面向 AI Agent 的超低时延代码执行沙箱，突破胖镜像与定制快照冷启动限制，毫秒级就绪赋能智能体高并发交互。<br>• <b>XM-Sparse</b>: 香港科大与 Netpreme 基于 SGLang 在纵向扩展内存池上实现稀疏注意力服务，TMA 算子流水与 GPU DMA 协同，Decode 吞吐超越 PCIe 方案高达 4.98 倍。<br>• <b>TAILROLL</b>: 华为加研与墨尔本大学 Buyya 团队攻坚强化学习后训练（RL Post-Training）Rollout 长尾阻塞瓶颈，无状态在途迁移与 GRPO 提前截断削减气泡 21%~74%。<br>• <b>Gemma 4 Global-KV</b>: 免改任何底层 Attention 算子！利用步长重叠视图在 vLLM 中单次存储 Gemma 4 全局 KV 缓存，双卡 PD 分离实测 Decode 吞吐飙升 1.38 倍。<br>• <b>HyCoInfer</b>: 清华大学在 cs.OS 推出 GPU-FPGA 云边协同大模型推理系统，云端 Prefill 与边端 FPGA Decode 弹性流水，RVQ 压缩抗住广域网限制，吞吐达纯云端 4.11 倍。<br>• <b>Communicate the Change</b>: Mila 与麦吉尔大学在 MoE 专家并行中开创激活值差量压缩传输，跨节点 All-to-All 物理通信量削减 4 倍，无损保持大模型收敛精度。<br>• <b>NPU Graph Superoptimization</b>: 华为海外团队首次将 Mirage 张量图超优化器迁移至华为昇腾 910B3 与 Triton 编译生态，融合算子性能最高飙升 87.0%。<br>• <b>GPU LSU Security & MPS Isolation</b>: 卢森堡大学逆向揭露 GPU 加载存储单元硬件缺陷，在 NVIDIA MPS 多租户混部模式下单卡竞争导致生产矩阵乘法性能雪崩 750 倍。<br>• <b>SPICE</b>: Mila、索邦大学与 CNRS 提出基于稀疏参数 Gossip 的去中心化大模型预训练协议，摆脱昂贵全局集合通信，在恶劣广域网环境下稳定收敛。<br>• <b>SpecSearch</b>: UIUC 团队建立硬件感知执行模型，自动化探索投机解码（Speculative Decoding）在不同 GPU 架构与内存容量下的 Pareto 最优调度配置。<br>• <b>Infra Energy Telemetry</b>: 欧洲顶尖超算与意大利国家科研所开源涵盖 Kubernetes 微服务、分布式存储与 LLM 推理的 1Hz 生产级全栈高精度能耗数据集。<br>• <b>CheckCo</b>: 动视暴雪旗下 King 团队提出在流处理常规 Checkpoint 周期内无停顿重平衡倾斜数据流，彻底根除热点 Key 引发的 Worker 瘫痪。 | [查看全文](docs/2026-11-19.md) |
 | **2026-11-17** | 12 篇 | • <b>NVFP4-MLA</b>: 英伟达官方首次将 DeepSeek-R1 / Kimi-K3 的 MLA 隐式 KV 缓存存储与注意力计算全栈推向 FP4，二维量化消除反量化开销，Rubin GPU 上注意力算子提速高达 2.82 倍。<br>• <b>Olmo-core MoE</b>: AI2 与华盛顿大学重构 MoE 分布式训练，首创 NVSHMEM 行级专家并行并消灭 Token 置换开销，实现计算与通信全零同步重叠。<br>• <b>Productive Preemption</b>: 新加坡国立大学与 Sea AI Lab 攻克长输出推理模型（Reasoning LLM）分钟级 KV Cache 占满显存引发的反复换入换出抖动危机，重塑生产性抢占调度。<br>• <b>Linux EEVDF Hrtick Fix</b>: Ampere Computing 工程师修复 Linux 内核 EEVDF 调度器同任务重选时丢失 hrtick 重置的缺陷，捍卫容器 CPU 份额隔离，补丁已正式合入 Linux 主线。<br>• <b>GNoF (GPU NVMe-oF)</b>: 国防科大提出低 SM 开销的 GPU 原生 NVMe-oF 完成路径，打破 RDMA 远程存储 10~100 微秒往返对 SM 的自旋轮询绑架，列存 I/O 提速 10~22 倍。<br>• <b>KernelArmor</b>: 英伟达与斯坦福联合推出首个结合 SMT 验证与 Agentic 闭环的 CUDA 安全系统，全自动验证 Tensor Cores 与异步拷贝安全性，覆盖 1,370 个生产级算子。<br>• <b>CertiSum</b>: 多伦多大学与英伟达联合攻克低精度训练非确定性，在 NVIDIA GB200 与 AMD MI350X 跨芯片及不同 DP/TP/CP 拓扑下实现按位完全一致（Bit-for-Bit）的 MXFP4 训练。<br>• <b>Bipartible Pattern</b>: 戴尔科技在 CANOPIE-HPC 提出 Bipartible 模式，透明拦截容器 HTTP 流量并无缝旁路至 InfiniBand 高速总线，零改造赋能云原生超算与 AI 微服务。<br>• <b>Nemotron Serving</b>: 英伟达针对连续批处理负载动态漂移，提出状态感知调度器，在持久常驻 Megakernels 与算子融合链之间极速切换，大幅跃升 ASR 大模型吞吐。<br>• <b>Cache Savings Leak</b>: 约翰斯·霍普金斯大学揭露多租户 LLM 推理前缀缓存的新型时序侧信道，证明只要调度器不空转，节省的算力时延必将直接被下游请求探测利用。<br>• <b>EPD Disaggregation Energy</b>: 墨尔本大学 Buyya 团队系统评测多模态大模型视觉编码、Prefill 与 Decode（EPD）阶段分离与动态调频，证明合理阶段切分能削减 13.3%~37.0% 显卡能耗。<br>• <b>Grace Blackwell Benchmarking</b>: 特拉华大学与英伟达在双卡 Grace Blackwell 桌面集群上实测 17 个开源大模型，证明在 200 GbE 无 NVLink 条件下张量并行吞吐与时延仍全面胜过流水线并行。 | [查看全文](docs/2026-11-17.md) |
 | **2026-11-15** | 0 篇 | 周末 / 节假日 arXiv 无新增论文 | [查看全文](docs/2026-11-15.md) |
 | **2026-11-13** | 12 篇 | • <b>Cairn</b>: KAIST 与 SK 海力士揭示 Serverless 大模型冷启动仅 5%~11% 用于权重加载，首创跨节点 CXL 共享内存池与 Zygote 预热容器，冷启动时间缩减高达 5.2 倍。<br>• <b>SubGPU Pipelining</b>: 英伟达官方团队面向 Blackwell B200 提出 GPU 内细粒度空间流水线并行，以 CUDA Green Contexts 划分 SM 池重叠短算子，访存带宽利用率提升至 83.6%。<br>• <b>Starscream</b>: AMD 研究院针对 MI300X/MI355X 芯粒架构重构大模型分片，打破传统粗粒度切分造成的算力坍塌，自注意力算子取得最高 4 倍加速。<br>• <b>SS-HSDP</b>: 清华大学与生数科技提出计算与优化器更新解耦的混合分片数据并行，以共享视图消灭冗余数据搬运，128 卡 MFU 提升高达 21.7%。<br>• <b>OBM (Optical Broadcast Memory)</b>: 乌普萨拉大学提出面向 8 万卡数据中心的广播式光共享内存架构，颠覆每卡复制大模型权重的传统范式，彻底摆脱推理节点昂贵 HBM 束缚。<br>• <b>Recompute vs Restore</b>: 高丽大学针对 Rebellions ATOM+ 静态图 NPU 揭示过载下 89.5% 算力沦为冗余 Prefill，构建 Host-Tier KV 桥接器将智能体工作流 SLO 达成率从 9.4% 挽救至 99.8%。<br>• <b>Ling Makespan Coordination</b>: 蚂蚁集团针对智能体评测与 RL 批处理长尾瓶颈，提出推理-沙箱环境协同与 CAAS 关键链路推进调度，Makespan 显著降低 10.4%~65.0%。<br>• <b>Parallel Prompting</b>: 加州大学圣克鲁兹分校提出单请求多流并发解码机制，针对同文档批量问答仅需单次读取 KV Cache，在 SGLang 生产引擎上实现最高 6 倍吞吐加速。<br>• <b>GC-MoE on SM120</b>: 阿里巴巴底层团队攻克消费级/工作站 Blackwell（RTX PRO 5000）上的 MoE 通信与计算重叠难题，融合 FP8xFP4 块缩放 MMA 算子取得 1.52 倍加速。<br>• <b>Metal Sandbox</b>: 上海交大与阶跃星辰推出面向 Apple Silicon 的 GPU 代码智能体隔离沙箱与跨节点命令调度系统，动态任务迁移缩减 22.3% 批处理时间。<br>• <b>Tideway</b>: 杜克大学提出面向消费级 MoE 推理的阶段感知分层统一内存管理，动态自适应 Prefill 与 Decode 访存特征，端到端延迟降低 1.97 倍、TTFT 加速 2.4 倍。<br>• <b>Virtual Threads eBPF Tracing</b>: 纽卡斯尔大学破解 Java 21 虚拟线程 $M:N$ 调度导致 eBPF 上下文错乱的顽疾，在 OpenJDK 内以 33ns 极低开销实现微秒级全生命周期精准追踪。 | [查看全文](docs/2026-11-13.md) |

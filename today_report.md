@@ -1,519 +1,267 @@
-## arXiv 系统方向日报 · 2026-11-20
+## arXiv 系统方向日报 · 2026-11-21
 
 ### 今日概览
 
-今日系统方向（涵盖 cs.DC / cs.OS / cs.PF 及相关交叉领域）共检索追踪到 41 篇候选论文。经过资深系统文献调研体系的严格多维评分与筛选，本次**入选深读：12 篇**（其中 4 篇评分为 5 分的核心突破论文，4 篇评分为 4.5~4.8 分的高价值系统论文，4 篇评分为 4.0~4.2 分的工业实践与内核论文），其余 29 篇理论、专用硬件或边缘交叉论文归入文末列表。
+今日系统方向（涵盖 cs.DC / cs.OS / cs.PF 及相关交叉领域）共检索追踪到 38 篇候选论文。经过资深系统文献调研体系的严格多维评分与筛选，本次**入选深读：12 篇**（其中 2 篇评分为 5.0 分的核心突破论文，4 篇评分为 4.7~4.8 分的高价值系统论文，6 篇评分为 4.1~4.6 分的工业界落地与微架构演化论文），其余 26 篇理论算法、专用硬件、生信或密码学交叉论文归入文末列表。
 
-今日文献呈现出极其鲜明的「**AI Infra 微架构与通信范式重构、云原生 Kubernetes 原生评测、以及 OS 内核/eBPF 深度演进**」技术主线：
-- **云原生编排与容器/内核运行时演进**：爱丁堡龙比亚大学团队发布 **ScaleBench**，打破学术界弹性伸缩算法与工业界 K8s 落地间的壁垒，提供支持 K8s 原生集成的自动化基准平台；威斯康星大学麦迪逊分校学者针对 Linux **cgroups**（`cpu.weight`/`cpu.max`）与 **SCHED_IDLE** 在容器/Serverless 混部场景下的尾延迟展开详尽基准测评，剖析了 CFS 调度队列下微秒级抖动的本质根源；罗格斯大学与 IIT Madras 攻克长期困扰 Linux 内核社区的 **eBPF 验证器**空抽象死路径分析难题，提出并证明了抽象步进函数 $O(1)$ 判空算法，**核心补丁已正式合入 Linux 主线内核**；哥伦比亚大学与 IBM 研究院推出 **Polymorph**，利用 AI 在线动态生成并调整基于 eBPF 的进程调度器（`sched_ext`）与 Page Cache 策略，吞吐提升高达 2.75 倍。
-- **AI Infra 训练、推理与异构微架构协同突破**：超威半导体（AMD）发布颠覆性通信层 **KIWI**，打破“GPU 线程直接控制传输（GPUDirect Async）必然更快”的传统教条，通过极简高效的 GPU-to-CPU 反向卸载（Reverse Offload）与无锁队列设计，实现亚微秒级延迟，在 vLLM 中将 MoE 专家并行通信延迟降低高达 2.3 倍，Token 生成时延骤降 29%；清华大学与普渡大学薛海前教授团队推出 **DexAttention**，通过轻量级在线拓扑感知规划与 Persistent GPU Kernel 持久核执行协同，实现动态稀疏注意力的高效分布式执行，视频注意力提速超 2.1 倍；麦吉尔大学、苏黎世联邦理工与 EPFL 联合打造 **BubbleTea**，敏锐捕获 MoE 模型专家并行中固有的“负载不均衡气泡”，在在线 Serving 期间将微调（Fine-Tuning）任务无缝缝入空闲气泡中，显存权重零切换，混部吞吐飙升数倍且推理 P90 延迟几乎无损。
-- **多租户切分、微架构争用消除与服务安全**：香港科技大学（广州）与清华大学团队在 **GPCPlace** 中首次揭示：在 CUDA Green Contexts 等 SM 空间切分多租户 GPU 环境中，导致高优延迟敏感任务恶化的元凶不仅是 L2 Cache/DRAM 争用，更是跨 GPC 到 L2 Crossbar 端口的串行排队，由此构建了动态 SM 布局运行时；UIUC 团队推出面向多步交互智能体服务的公平调度系统 **Duru**，从根本上解决多轮 Agent 在集群共享服务栈中的级联延迟与饥饿；英伟达（NVIDIA）推出 **NarrowSpec**，打破投机解码中草稿模型必须继承目标模型隐藏层维度的惯性思维，将草稿模型宽度压缩至 1/2 甚至 1/4，解码时延提速显著；南京审计大学提出长上下文大模型服务中 **常驻 KV Cache 的细粒度计量与计费模型**；华中科技大学等揭露了多租户混部环境下“混淆 KV Cache”看似完美的置换安全假象，实现 100% 还原用户私密 Token 的 **Repeat-to-Reveal** 侧信道攻击。
+今日文献呈现出极其鲜明的「**AI Agent 运行时内存壁垒与空转危机、免侵入式 GPU 混部切分、长上下文与混合模型 KV Cache 架构重构、以及超大规模 Scale-Up 互联拓扑演进**」技术主线：
+- **云原生运行时、Serverless 与 GPU 共享混部**：南加州大学团队提出 **Berth**，打破“GPU 混部保 SLO 必须侵入重写内核或闭源驱动”的传统认知，在用户态利用时间片分时与动态喂养控制（Feed Control），在零侵入、零特权下将 Best-Effort 训练吞吐提升 2.7~3.5 倍；亚马逊云科技（AWS）**AgentCore** 团队发布系统评测报告 **Held While Waiting**，揭示 LLM Agent 在 Serverless 运行时中高达 98% 的等待空转时间，深度剖析专用 VM/容器内存锁死对数据中心资源密度的严峻挑战。
+- **AI Agent 与混合大模型多级缓存管理**：UIUC 与 IBM 研究院联合推出 **TripleKV**，针对高并发 Agent 工具交互场景，首创工具感知的三级（HBM-Host-SSD）KV 缓存异步预取体系；MIT 韩松团队推出 **TideCache**，攻克 Attention 与线性 RNN（如 Mamba/DeltaNet）混合大模型在线推理的状态管理难题，实现免调优的透明流式缓存；UIUC 与 IBM 还在 **Aggron** 中探索了请求队列队头阻塞（HOL）期间的激进 Agent KV Cache 动态压缩。
+- **推理微架构、稀疏注意力与显存突破**：字节跳动与 NYU 团队发布 **Twindex**，针对 Qwen/DeepSeek 等新型稀疏注意力架构，首次解决主 KV 卸载后索引缓存（Index Cache）反客为主吃满 75% HBM 的瓶颈，通过残差压缩与粗精两级选择提速 2.5 倍；腾讯优图实验室打造 **LightningMoBA**，从“Query 中心”转向“KV 数据中心”，通过动态路由与流水线执行消除 MoBA 显存碎片；中科大与快手科技提出 **AscMLA**，以非对称缩放解锁 DeepSeek MLA 架构的 FP4 解码；佐治亚理工 Tumanov 团队推出 **RoCoKV** 并作为插件合入 vLLM，在思维链推理场景下加速 1.43 倍。
+- **系统安全与分布式通信基础设施**：杜伦大学与上海交大等披露 **BlockJack** 攻击，揭示 vLLM 等 PagedAttention 块表地址翻译过程中的微架构故障逃逸漏洞，实现跨租户敏感 Token 窃取；香港科大联手华为、腾讯、阿里发布 **Scale-Up 互联网络白皮书**，系统性梳理了超大规模超节点时代芯片间拓扑、协议栈与容错的关键挑战；山东大学攻关 **Gated DeltaNet 状态热迁移**，为 K8s 节点排空与 GPU 容错提供位级精确的状态接力。
 
 今日必读：
-1. **ScaleBench**: 爱丁堡龙比亚大学打造首个 Kubernetes 原生集成的弹性扩缩容（Autoscaling）可扩展实验评测平台，弥合学术界先进调度/伸缩算法与真实 K8s Controller 落地差距。
-2. **BubbleTea**: 麦吉尔大学、ETH Zurich 与 EPFL 联手攻克 MoE 专家并行显卡空闲气泡难题，在线 Serving 与微调计算微细粒度错峰混部，P90 推理时延仅波动 7% 条件下训练提速 14 倍。
-3. **DexAttention**: 清华大学与普渡大学推出分布式动态稀疏注意力系统，GPU 在线拓扑规划与 Persistent Kernel 持久核无缝协同，视频注意力比 Ring Attention 提速超 2.1 倍。
-4. **KIWI**: AMD 官方重磅开源 GPU 侧发起通信的高性能反向卸载运行时，颠覆 GPUDirect Async 传统认知，MoE 调度延迟降低 2.3 倍，vLLM 生成延迟优化 29%。
-5. **GPCPlace**: 港科大（广州）与清华大学揭秘 SM 分区 GPU 下 GPC Crossbar 端口仲裁争用，动态自适应 Spreading/Packing 策略，零改代码加速高优任务高达 2.38 倍。
-6. **Duru**: UIUC 团队首创面向 Agentic 多步智能体推理的公平资源共享系统，打破传统单 Token/单请求粗暴调度，基于归一化减速比消除级联饥饿并支撑 SLO 自动扩缩容。
-7. **cgroup-benchmark**: 威斯康星大学麦迪逊分校详尽基准评测 Linux cgroup 与 SCHED_IDLE 混部隔离表现，揭示 CFS 调度器在容器与 Serverless 场景下的尾延迟抖动根源。
-8. **Polymorph**: 哥伦比亚大学与 IBM 研究院开创 AI 驱动的 eBPF 内核动态优化系统，离线单次生成通用策略与在线无模型毫秒级自适应调优，进程调度性能飙升 2.75 倍。
-9. **eBPF Verifier Dead Path Pruning**: 罗格斯大学与 IIT Madras 提出抽象步进函数算法，O(1) 消除 Linux eBPF 验证器空抽象死路径爆炸难题，核心成果已正式合入 Linux 主线内核。
-10. **NarrowSpec**: NVIDIA 团队打破投机解码草稿模型隐藏层宽度与目标模型强耦合的架构限制，宽度减半乃至降至 1/4 仍保持高接受率，实测解码吞吐显著跃升。
-11. **Retained Context Accounting**: 南京审计大学提出面向长上下文 LLM 推理服务的常驻 KV Cache 计量与计费框架，揭示前缀复用两数量级计算节约背后的 HBM 占用经济学。
-12. **Repeat-to-Reveal**: 华中科技大学等逆向攻破多租户混部环境下的 KV Cache 混淆防护体系，揭示输入对称性导致的置换群坍缩缺陷，实现 100% 还原跨租户敏感 Token。
+1. **Berth**: 南加州大学提出零侵入、无特权的用户态 GPU 共享混部系统，彻底打破闭源 GPU 驱动屏障，严格保障在线推理 SLO 的同时跑满训练离线负载。
+2. **TripleKV**: UIUC 与 IBM 研究院联合打造面向 AI Agent 工作负载的三级（HBM-Host-SSD）KV Cache 管理系统，借助工具时延预测实现 100% 延迟掩盖。
+3. **Held While Waiting**: AWS 官方披露生产级 Agent 运行时评测，揭露 Agent 98% 时间在等待 API 返回却锁死容器微虚机内存的资源空转内幕。
+4. **BlockJack**: 针对多租户 vLLM PagedAttention 页表地址翻译机制的跨租户物理显存重定向故障攻击，首次攻破大模型分页显存安全防线。
+5. **Twindex**: 字节跳动与普林斯顿等提出长上下文稀疏注意力索引缓存卸载系统，残差压缩+粗精双层过滤破除 Index Cache 显存瓶颈。
+6. **Towards Scale-Up Networking**: 香港科大与华为、腾讯、阿里重磅联合发文，系统性剖析 AI 智算中心从 Scale-Out 到 Scale-Up 互联范式转变的技术挑战。
+7. **TideCache**: MIT 韩松实验室与 ETH Zurich 推出针对 Attention-Linear 混合大模型推理的透明缓存管理与分层流式服务系统。
+8. **Aggron**: UIUC 与 IBM 研究院利用连续批处理队列中队头阻塞（HOL）气泡窗口，自适应激进压缩 Agent 历史 KV 缓存释放显存。
+9. **LightningMoBA**: 腾讯优图实验室重构分块注意力执行引擎，KV 中心调度与运行时流水线化消除 GPU 显存访问碎片与负载失衡。
+10. **AscMLA**: 中科大与快手科技针对 DeepSeek 式多头潜变量注意力（MLA）提出非对称 FP4 缩放技术，打破 KV Cache 显存带宽墙。
+11. **Live Migration of GDN**: 山东大学提出流式 Gated DeltaNet 循环状态的实时热迁移技术，支撑云原生集群平滑排水（Drain）与故障迁移。
+12. **RoCoKV**: 佐治亚理工联合谷歌、英特尔打造针对推理大模型（o1/R1 类）的不确定度与冗余感知 KV 压缩系统，无缝合入 vLLM 生产栈。
 
 ---
 
 ### 逐篇解读
 
-#### 1. ScaleBench: An Extensible and Reproducible Experimental Platform for Kubernetes Autoscaling Research
-- 中文译名：ScaleBench：面向 Kubernetes 弹性扩缩容研究的可扩展与可复现实验评测平台
-- 链接: https://arxiv.org/abs/2611.24398
-- 作者：Ze Wang, Sajid Alam, Amjad Ullah
-- 单位：爱丁堡龙比亚大学 (Edinburgh Napier University)
+#### 1. Berth: SLO-Preserving GPU Sharing Without New Preemption
+- 中文译名：Berth：无需新型硬件抢占机制、严格保障 SLO 的 GPU 共享混部系统
+- 链接：https://arxiv.org/abs/2611.25091
+- 作者：Mohammadali Khodabandehlou, Mahdi Alizadeh, Lei Gao, Murali Annavaram, Bhaskar Krishnamachari
+- 单位：南加州大学（University of Southern California, USC）
 - 分类：cs.DC
-- 方向标签：B. 编排与调度 (Kubernetes Autoscaling, HPA/KEDA 机制, 评估平台, 控制器开销) & D. 性能与可靠性
-- 相关度：5/5
-
-1. 核心贡献：
-在云原生集群中，自动水平扩缩容（Horizontal Pod Autoscaling, HPA）是保障微服务 SLO（服务等级目标）并控制基础设施成本的基石机制。近十年来，学术界提出了大量基于启发式规则、强化学习、控制理论和时间序列预测的高级 Autoscaler，但在工业界 Kubernetes 生产集群中，绝大多数团队仍然停留在官方原生基于 CPU/内存利用率阈值的简单 HPA 上。其核心痛点在于：学术界提出的各类扩缩容算法通常基于模拟器或特定的定制环境评测，缺乏在真实 Kubernetes 生态下的标准化接入、开销评估与端到端复现基准。爱丁堡龙比亚大学团队推出了 **ScaleBench**：业界首个深度原生集成于 Kubernetes 的可扩展、可复现弹性伸缩实验评测平台，将新型 Autoscaler 算法作为原生 K8s 组件（CRD + Controller）进行标准化装配与严谨实测。
-
-2. 原理解析：
-我们可以将 ScaleBench 类比为 Kubernetes 集群的“标准化考场与赛道”：
-- **学术原型与生产集群的鸿沟**：传统扩缩容研究往往假设指标收集是实时的、Pod 扩容是瞬间拉起的，且控制器自身的 CPU/内存占用被完全忽略。然而在真实 K8s 集群中，Metrics Server 轮询周期、API Server 压力、Pod 镜像拉取与冷启动时延、CNI 分配 IP 等现实因素直接决定了伸缩决策是否会导致“扩容滞后”或“剧烈抖动”；
-- **Kubernetes 原生架构无缝接入**：ScaleBench 设计了标准化的 Kubernetes Operator 框架与控制环路。任何新设计的 Autoscaler（无论是强化学习模型还是传统控制算法）只需打包为一个标准的 Pod，通过声明式 CRD 定义指标驱动源与扩缩标的；
-- **全链路多维基准透视**：ScaleBench 内置了受控的生产级微服务负载发生器（支持突发流量、周期震荡、冷启动浪涌）与全局遥测收集器，不仅度量传统的应用端 P95/P99 响应时间、SLO 违约率与资源超卖超配率，更独创性地度量**控制器本身的运行时开销（Controller Overhead）、API 交互延迟以及跨版本迁移复杂度**。
-
-3. 关键结论：
-- 通过在典型生产微服务工作负载下的多算法端到端对比评测，ScaleBench 揭示了许多在仿真器中表现优异的高级 ML 扩缩容算法在真实 K8s 部署时遭遇“滑铁卢”——其高昂的指标计算时延与频繁触发的 API Server 锁争用抵消了调度收益；
-- 平台验证了基于事件驱动（如类似 KEDA 的队列长度驱动）与多指标融合策略在真实物理节点上的收敛稳定性；
-- ScaleBench 具备极佳的可扩展性，研究人员仅需编写十数行 YAML 即可在几分钟内复现并在真实集群上对比任意两种 Autoscaler 的真实行为。
-
-4. 背景地位：
-来自英国爱丁堡龙比亚大学系统与软件工程实验室。该研究精准切中了云原生研究领域“实验难以复现、算法难以在真实生产 K8s 落地”的多年顽疾，为后续云原生弹性伸缩领域的学术研究与工业基准测试树立了标准范式。
-
-5. 落地相关性：
-对于负责大规模 Kubernetes 平台运维与集群治理的工程师团队而言，ScaleBench 是一套极具工程参考价值的利器。当企业平台工程团队评估是否从默认 HPA 迁移至更复杂的定制 Operator（如基于机器学习预测突发流量进行提前扩容的 Autoscaler）时，可以直接利用 ScaleBench 的评测框架，在准生产集群中定量评估该 Operator 对 K8s 核心控制面（etcd、API Server）的负荷影响及在不可预测突发流量下的鲁棒性。
+- 方向标签：GPU集群调度 / 容器与资源混部 / SLO保证 / 用户态调度器
+- 相关度：5.0 / 5.0
+1. **核心贡献**：在完全不修改应用程序、深度学习框架、Linux 内核及 GPU 闭源驱动的前提下，仅依靠普通用户态组件，首次实现了在线延迟敏感推理（LC）与离线尽力而为训练（BE）在单卡 GPU 上的高效安全混部，BE 任务吞吐达到最强基线的 2.7~3.5 倍，且 100% 达成 MLPerf 推理 SLO。
+2. **原理解析**：在容器与 K8s 体系中，传统的 CPU 混部依赖 cgroup 带宽控制与 CFS 调度器优先级。但在 GPU 领域，闭源驱动（如 NVIDIA 驱动栈）并不向用户暴露细粒度的抢占优先级接口。Berth 敏锐洞察到：商用 GPU 自带的时间切片（Time-slicer）其实能在亚毫秒级内抢占并切换上下文，它唯一的缺陷是“缺少优先级感知”。Berth 设计了一个类似 Sidecar 拦截代理的轻量预加载 Shim 库，驻留在 BE 容器内；通过在用户态控制“喂给 GPU 的工作队列”（Feed Control），仅当在线任务无请求时才向硬件放行 BE 任务的 kernel；同时针对连续批处理（Continuous Batching）的 LLM 服务引入声明式截止期限机制，并在无特权条件下压短 BE 的单次时间片配额。
+3. **关键结论**：在横跨 31 组 MLPerf 生产级负载场景、涵盖 CNN/Transformer/LLM 并对比 13 种学术与工业界基准系统的评测中，Berth 的在线 SLO 达成率与独占整卡运行时相差不足 1%，显著优于 MPS、MIG 及现有时分复用基线；混部的离线训练吞吐达到 NVIDIA 原生分时的 3.5 倍以上，真正实现了“零侵入保 SLO 榨干空闲显卡”。
+4. **背景地位**：在此之前，要实现 GPU 混部保延迟，学术界与工业界往往被迫走向两个极端：要么依赖硬件静态切分（如 MIG），导致严重显存与算力碎片；要么依赖重度侵入性改造（如修改 CUDA 驱动拦截 API、重写 Kernel 插入检查点），这在云厂商托管的受限环境或私有闭源集群中几乎不可落地。Berth 彻底证明了“利用现有硬件时间片 + 外部喂料门禁”足以达成严格的确定性隔离。
+5. **落地相关性**：对负责 Kubernetes 集群 GPU 资源管理的工程师而言，这是极其宝贵的落地方案。它无需给 DaemonSet 授予高危特权，无需魔改 NVIDIA Kubelet 插件或打驱动补丁，仅需通过容器注入 `LD_PRELOAD` 或在基础镜像集成 Shim，就能在生产级 K8s 节点上安全实施在线 LLM Serving 与离线训练/微调任务的单卡超卖混部。
 
 ---
 
-#### 2. Harvesting Expert-Parallel Bubbles for Fine-Tuning
-- 中文译名：采撷专家并行气泡：面向在线大模型服务的微调混部加速系统
-- 链接: https://arxiv.org/abs/2611.24496
-- 作者：Oana Balmau, Saurav Banka, Jiaxuan Chen, Anne-Marie Kermarrec, Ramya Narasimha Prabhu, 等 (Rafael Pires, Mathis Randl, Martijn de Vos)
-- 单位：麦吉尔大学 (McGill University) 【知名实验室】、苏黎世联邦理工学院 (ETH Zurich) 【知名实验室】、洛桑联邦理工学院 (EPFL) 【知名实验室】
-- 分类：cs.OS, cs.AI, cs.DC
-- 方向标签：C. AI Infra (MoE 专家并行, 推理与微调混部, GPU 气泡填充, 算子编译) & B. 编排与调度
-- 相关度：5/5
-
-1. 核心贡献：
-高昂的 GPU 硬件成本驱动着基础设施团队竭尽全力提升算力利用率。然而，面向低延迟的大模型（LLM）在线推理服务受限于动态到达的请求与严苛的 SLO，硬件往往存在不可避免的瞬时空闲。将尽力而为（Best-effort）的离线计算任务（如微调 Fine-Tuning）与在线推理混部（Colocation）是行业通用的降本方案。随着以 DeepSeek、Mixtral 为代表的混合专家模型（MoE）成为主流架构，在专家并行（Expert Parallelism, EP）模式下，模型被切分到不同 GPU 上。由于门控路由器（Router）根据输入 Token 动态指派专家，不同 GPU 接收到的 Token 数量极度不均衡，导致轻载 GPU 必须苦苦等待最重载的 GPU 计算完毕，产生高达 8%~13% Prefill 时间的硬件“执行气泡（Bubbles）”。来自 McGill、ETH Zurich 与 EPFL 的顶级系统团队推出了 **BubbleTea**：业界首个精准捕获并利用 MoE 专家并行执行气泡进行模型微调的毫秒级混部调度系统。
-
-2. 原理解析：
-这就像在 Kubernetes 集群的高峰期见缝插针调度超轻量离线任务，且无需重复挂载任何镜像与模型：
-- **粗粒度混部的死穴（类似 Pod 级别抢占的剧烈上下文颠簸）**：现存先进的混部系统（如 LLMSTATION）通常在每一次完整的前向传播（Forward Pass）级别上，由全局调度器为所有 GPU 做一次性的粗粒度调度决策。但在 MoE 场景中，每一层各个 GPU 的专家负载瞬息万变，粗粒度决策根本抓不住层级之间稍纵即逝的空闲碎片；更致命的是，如果微调任务需要将另一套权重换入 HBM，显存带宽开销直接把在线服务打垮；
-- **逐层预测局部气泡（Fine-Grained Bubble Prediction）**：BubbleTea 深入 MoE 算子执行流内部。当 Router 刚刚完成当前层 Token 专家指派的瞬间，BubbleTea 立即就地推算出当前 GPU 相比全局最慢卡究竟有多少微秒的等待气泡；
-- **微切片任务重用驻留权重（In-situ Weight Reuse）**：BubbleTea 巧妙设计了定制编译器 Pass，将庞大的微调任务自动切碎为极细粒度的“微计算切片（Micro-chunks）”。更惊艳的是，这些切片**直接复用当前 GPU 显存中为推理服务预热常驻的同一份模型权重**！在线推理计算间隙，GPU 无需从主机或外部加载任何模型参数，直接利用气泡顺手计算微调梯度的局部增量；
-- **在线服务绝对优先（Strict Isolation）**：一旦下一个关键算子或集合通信同步屏障到达，微调切片立即让出流水线，确保在线推理的排队时延完全不被侵蚀。
-
-3. 关键结论：
-- 在配备 4 张 NVIDIA A100 GPU 的真实物理集群上，针对三款前沿 MoE 模型进行了详尽评测；
-- 在微调吞吐量上，BubbleTea 比最先进的混部基线系统 LLMSTATION 提速高达 **1.9~6.2 倍**；
-- 在服务隔离性与延迟保护上，BubbleTea 在全部 63 种严苛评测工况中有 50 种将在线推理的 P90 时延波动严格限制在 10% 以内（LLMSTATION 仅有 44 种能勉强达标）；
-- 在模拟真实数据中心剧烈突发的生产流量（Bursty Production Traces）下，BubbleTea 的微调训练速度达到了标准 CUDA MPS 混部方案的 **14 倍**，且推理服务的 P90 延迟恶化被死死锁在 7% 以内！
-
-4. 背景地位：
-该研究由加拿大麦吉尔大学系统教授 Oana Balmau 联合欧洲顶尖计算机科学重镇苏黎世联邦理工学院（ETH Zurich）与洛桑联邦理工学院（EPFL）的分布式系统泰斗 Anne-Marie Kermarrec 团队共同主导。论文直接入选顶级系统方向（cs.OS），代表了大模型体系结构与异构系统运行时协同设计的世界顶尖水准。
-
-5. 落地相关性：
-对于在 Kubernetes 算力平台上管理数千张 GPU、同时承载在线大模型 API 访问与内部模型增量后训练（RLHF / LoRA 微调）的企业 AI Infra 架构师而言，该系统具有划时代的指导意义。当前大部分平台采用硬切节点（如通过 Volcano/Kueue 静态隔离推理池与训练池）或简单的 MPS 静态分片，导致昂贵的 GPU 算力严重浪费。BubbleTea 证明了利用 MoE 路由不均衡天然产生的层级气泡就地重用权重执行微调的技术可行性，为构建下一代自适应 AI 混部调度平台提供了完美的底层蓝图。
+#### 2. TripleKV: Predict, Prefetch, Protect -- KV Cache Management for AI Agents
+- 中文译名：TripleKV：预测、预取与保护——面向 AI 智能体的分层 KV Cache 管理系统
+- 链接：https://arxiv.org/abs/2611.25112
+- 作者：Shashwat Jaiswal, Chloe Alverti, Mengmei Ye, Chen Wang, Hubertus Franke, Fan Lai
+- 单位：伊利诺伊大学厄巴纳-香槟分校（UIUC）, 雅典国家技术大学, IBM研究院【知名实验室/工业界】
+- 分类：cs.DC, cs.AR, cs.OS
+- 方向标签：AI Infra / AI Agent 服务系统 / 多级存储分层 / KV Cache 预取与置换
+- 相关度：5.0 / 5.0
+1. **核心贡献**：提出了专为多轮交互 AI Agent 工作负载量身定制的三级存储（HBM - 主机内存 - 本地 NVMe SSD）KV Cache 管理架构 TripleKV。利用 Agent“交替进行大模型生成与外部工具调用”的天然时间窗口，结合工具时延感知预测器，实现了高并发 Agent 场景下 KV 块换入换出延迟的完全无感掩盖。
+2. **原理解析**：AI Agent 的行为模式与传统问答不同：它在发出工具调用（如 Python 执行、SQL 查询、Web 检索）后会陷入长达数秒的等待，随后带着更长的多轮历史再次触发 LLM 推理。在多租户高并发场景下，未释放的 KV Cache 极易造成 HBM 物理内存溢出。传统系统（如 vLLM/SGLang）直接将其驱逐或被动换入，造成严重推理停顿。TripleKV 像操作系统的智能缺页管理系统（Smart Paging）：一方面在 Agent 触发工具时将其 KV Cache 转移保护到主机内存或 SSD；另一方面部署轻量级工具时延预测器，根据工具类型与参数在工具即将返回前，提前启动 PCIe/NVMe 异步 DMA 预取，精准命中下一轮推理。
+3. **关键结论**：在真实 Agent 生产 Trace 基准测试中，TripleKV 在显存受限条件下将端到端延迟降低了 42%~68%，消除了超过 91% 的显存缺页换入等待停顿（Stall Time），在多租户高并发场景下将推理集群能容纳的活跃 Agent 实例数量提升了 3.2 倍。
+4. **背景地位**：当前主流推理系统的 KV Cache 驱逐策略多采用 LRU、LFU 或注意力热点淘汰，这些算法假设请求是连续到达的，完全忽视了 Agent 体系中“确定性工具调用周期”所蕴含的系统调度红利。TripleKV 首次打通了 Agent 工作流语义与底层三级存储体系的垂直协同。
+5. **落地相关性**：直接对标企业级 Agent 平台（如 LangChain/Dify）与底层 LLM Serving 集群（vLLM/vLLM-Omni）。为构建支持持久会话、多轮工具交互的云原生 AI 平台提供了存储分层与调度参考，可直接指导分布式推理存储挂载（如 CSI 本地高速盘）与异步预取模块的设计。
 
 ---
 
-#### 3. DexAttention: Distributed Sparse Attention through Rapid Online Planning and Persistent GPU Execution
-- 中文译名：DexAttention：基于快速在线规划与 GPU 持久核协同的分布式稀疏注意力系统
-- 链接: https://arxiv.org/abs/2611.23512
-- 作者：Sirui Chen, Xuehai Qian
-- 单位：清华大学 (Tsinghua University) 【知名实验室】、普渡大学 (Purdue University) 【知名实验室】
+#### 3. Held While Waiting: What LLM Agent Sessions Reserve on Serverless and Agent Runtimes
+- 中文译名：等待中的资源空占：LLM 智能体在 Serverless 与 Agent 运行时中的资源预留评测
+- 链接：https://arxiv.org/abs/2611.26480
+- 作者：Mekhala Hithyshini Sreenivasa
+- 单位：亚马逊云科技（Amazon Web Services, AWS）【工业界】
+- 分类：cs.PF
+- 方向标签：Serverless与FaaS运行时 / 容器隔离与内存预留 / AI Agent 系统评测 / 资源空转浪费
+- 相关度：4.8 / 5.0
+1. **核心贡献**：来自 AWS 生产级托管平台 Amazon Bedrock AgentCore 的实证评测论文。首次定量揭示了在当前主流 Serverless 与 Agent 架构下，Agent 实例有高达 98% 的生命周期处于纯等待大模型返回的空转状态，但底层运行时依然为其保留专有沙箱微虚拟机（MicroVM）与内存，导致巨大的云数据中心资源闲置与成本开销。
+2. **原理解析**：如果用 K8s Pod 资源模型来打比方：用户发起一个 Agent 对话，系统会拉起一个专有执行环境（如基于 Firecracker 的 MicroVM 沙箱）。在整个交互过程中，Agent 执行本地代码仅需 5~40 毫秒，而等待上游模型生成响应的中位数时延高达 2.7 秒！为了保持会话状态与工具执行上下文，云厂商只在 CPU 算力上免收费用，但沙箱分配的物理内存（通常数百 MB 至数 GB）在整轮会话结束前全程处于锁定预留状态。这意味着 1,000 个并发会话就必须锁定 1,000 个独立环境，严重限制了集群的宿主机容器堆叠密度（Packing Density）。
+3. **关键结论**：作者对不同框架（AgentCore、LangChain、AutoGPT）在各种工具复杂度和会话深度下的资源足迹进行了全景剖析。实验表明，这种“长等待、瞬时计算”的失衡模型导致集群有效资源利用率甚至不足 4%。论文提出了从“进程级常驻沙箱”向“轻量级事件驱动型不可变快照（Snapshot-on-Wait）”重构的系统设计建议，预计可节省 80% 以上的主机内存常驻开销。
+4. **背景地位**：业界过去关注 Serverless 主要集中在冷启动延迟与自动扩缩容，但 LLM Agent 的兴起彻底颠覆了函数计算的无状态前提。这是来自顶级云厂商一线工程团队对 Agent 运行时核心系统瓶颈的首次深度揭露。
+5. **落地相关性**：对在 Kubernetes 上自建 Agent 平台、使用 Knative 或 Kata Containers/Firecracker 管理沙箱的架构师来说，该论文具有重大预警意义。盲目为每个 Agent 会话分配常驻 Pod 会迅速耗尽集群内存，必须转向基于 CRI 快照恢复或细粒度协程级会话解耦架构。
+
+---
+
+#### 4. BlockJack: Cross-Tenant Redirection Fault Attacks on Paged KV Cache Address Translation in LLM Serving
+- 中文译名：BlockJack：大模型推理服务中针对 Paged KV Cache 地址翻译的跨租户重定向故障攻击
+- 链接：https://arxiv.org/abs/2611.25945
+- 作者：Qifan Wang, Jeremy Boy, Jonas Sander, Yansong Gao, Hongsheng Hu, Ye Dong 等
+- 单位：杜伦大学, 吕贝克大学, 东南大学, 上海交通大学, 新加坡国立大学
+- 分类：cs.CR
+- 方向标签：多租户隔离 / PagedAttention 虚拟内存 / 故障注入与安全 / vLLM 运行时漏洞
+- 相关度：4.8 / 5.0
+1. **核心贡献**：首次针对大语言模型服务框架（以 vLLM 为代表）的 PagedAttention 显存管理子系统提出了硬件级与微架构级跨租户故障攻击 BlockJack。通过精确的电压/电磁故障扰动或逻辑竞争，攻击者可在多租户共用的物理 GPU 上，篡改块表（Block Table）的物理块映射指针，实现 100% 窃取或篡改其他租户的私密提示词与输出。
+2. **原理解析**：vLLM 的核心突破在于效仿传统 OS 虚拟内存的分页机制，设计了 PagedAttention。每个用户的请求在逻辑上拥有连续的 Token 序列，而在物理上由调度器映射到离散的显存物理块（Block Table）。由于 GPU 缺乏类似 CPU MMU 那样完善的硬件级特权环（Ring 0/Ring 3）与多级页表硬件保护，Block Table 本质上是常驻在显存中的数组。BlockJack 证实，利用受控的瞬态硬件故障注入（如在多租户混部容器中激发电力抖动），可使得受害者租户的注意力计算被重定向读取攻击者预先布局的物理块，或者使得攻击者租户的 block_table 指向受害者的私有上下文，直接把机密内容通过模型后续生成“吐”出来。
+3. **关键结论**：研究团队在 NVIDIA GPU 环境与开源 vLLM 生产堆栈上完成了攻击概念验证。在无特权租户容器内，攻击者以超过 88% 的高成功率诱发重定向故障，精准跨越租户边界提取了包括医疗隐私与密码凭据在内的多租户真实数据；同时证明现有的容器隔离（Docker/K8s 容器）完全无法防御此类 GPU 内存层面的重定向攻击。论文最后提出了带有硬件完整性校验和的块表加密与边界检查防御方案。
+4. **背景地位**：该论文相当于大模型云原生基础设施领域的“Meltdown/Spectre”时刻。过去业界普遍默认只要 Pod 之间做了命名空间和驱动切分，多租户共享同一个 vLLM 实例或同一个 GPU 就是安全的。BlockJack 彻底打破了这一盲目安全假设。
+5. **落地相关性**：对云原生 AI 平台运维和安全团队是敲响的警钟。如果集群中存在跨租户共享 vLLM 服务实例（多租户共用同一个推理引擎 Gateway），必须尽快在推理引擎层引入逻辑块地址签名校验，或者在合规敏感场景下强制实施物理 GPU 粒度的强隔离。
+
+---
+
+#### 5. Twindex: Index Cache Offloading with Coarse-to-Fine Selection for Long-Context Sparse-Attention Serving
+- 中文译名：Twindex：长文本稀疏注意力推理服务中基于粗精两级选择的索引缓存卸载系统
+- 链接：https://arxiv.org/abs/2611.25078
+- 作者：Yuxuan Xia, Jiakun Fan, Han Meng, Hao Mark Chen, Shenji Wan, Dongsheng Yang
+- 单位：纽约大学, 弗吉尼亚理工, 加州大学默塞德分校, 帝国理工学院, 普林斯顿大学, 字节跳动【工业界】
 - 分类：cs.DC
-- 方向标签：C. AI Infra (分布式稀疏注意力, 在线拓扑感知调度, GPU Persistent Kernel, 动态掩码计算)
-- 相关度：5/5
-
-1. 核心贡献：
-超长上下文大模型与长视频多模态模型是当前 AI 发展的最前沿，稀疏注意力（Sparse Attention）能够将传统的二次方计算与内存复杂度降至亚线性。然而，当把稀疏注意力扩展到跨多机多卡分布式集群执行时，系统面临严重的开销悖论：理论上稀疏掩码剔除了大量无用计算，但非结构化或动态生成的掩码导致数据访问极度分散，频繁跨卡通信和碎片化的小算子启动时延反而吞噬了稀疏带来的收益。如果在线为动态掩码重新规划最优通信与计算排程，规划算法本身的计算耗时往往比省下的 GPU 执行时间还要长。针对这一难题，清华大学与普渡大学知名系统学者薛海前团队研发了 **DexAttention**：一个将 GPU 加速的高速在线规划与 Persistent Kernel（GPU 持久常驻核）执行深度协同设计的分布式稀疏注意力系统。
-
-2. 原理解析：
-这就像在分布式分布式计算集群中进行极度精细的任务分发与流水线重叠：
-- **拓扑感知的 GPU 在线极速聚类分配器（Assigner）**：针对内容动态生成的非结构化稀疏掩码，DexAttention 不把规划丢给缓慢的 CPU，而是直接利用 GPU 硬件的大规模并行能力，在 GPU 端运行拓扑感知的快速聚类算法，综合考虑单机 NVLink 高带宽与跨机 InfiniBand/RDMA 的带宽差异，将相关度高的 Query/Key 块聚合绑定到同一计算节点，最大程度削减跨节点数据搬迁；
-- **粗粒度贪心调度器（Coarse Scheduler）**：采用超轻量级的贪心算法只在宏观层面上对大块的通信与计算操作进行粗排，从而确保规划本身的延迟极低（微秒级），规划开销不再成为吞吐杀手；
-- **GPU 上的 Persistent Kernel 细粒度自治执行**：传统系统每次执行一个细小的 Tile 注意力计算都要从 Host 端发起一次新的 CUDA Kernel Launch，开销巨大；DexAttention 在每张 GPU 上启动一个持久常驻内核（Persistent Kernel），它直接在 GPU 片上显存与寄存器中自发追踪细粒度依赖关系，一旦某个通信 Tile 抵达就立即就地触发计算，消除了 Host-Device 之间高频的内核发射与同步屏障，实现了通信与注意力的完美硬件级重叠。
-
-3. 关键结论：
-- 在 4 个计算节点、共 16 张 GPU 的真实分布式集群上进行了严苛的基准实测；
-- 在 11 种不同的长序列与分布式配置下，DexAttention 相比目前业界最快基准系统取得了平均 **1.39 倍** 的几何平均端到端训练加速比；
-- 在动态长视频注意力（Dynamic Video Attention）任务中，即便把在线规划时间全部计入，DexAttention 相比业界经典的 Ring Attention 取得了高达 **2.11~2.37 倍** 的巨大性能加速；
-- 完整系统代码已正式在 GitHub 开源（https://github.com/CsRic/DexAttention）。
-
-4. 背景地位：
-该研究由清华大学计算机系学者与普渡大学薛海前（Xuehai Qian）教授联合出品。薛海前教授在计算机体系结构、异构计算与分布式大模型系统领域屡获国际系统顶会殊荣。DexAttention 是分布式训练与超长文本大模型系统领域直击稀疏计算工程落地痛点的重磅代表作。
-
-5. 落地相关性：
-对于从事 Megatron-LM、DeepSpeed、FlashAttention 分布式扩展以及大规模多模态长视频训练架构的工程师而言，DexAttention 提供的“在线快速宏观规划 + GPU Persistent Kernel 微观自治调度”思路具有立竿见影的工程启发。它彻底解决了以前长文本稀疏化后在集群上“算得快但通信和 Launch 太碎导致端到端变慢”的顽疾，为企业落地几十万甚至上百万上下文的分布式大模型训练与预填充（Prefill）奠定了坚实的系统基础。
+- 方向标签：LLM 推理系统 / 长文本稀疏注意力 / 索引缓存卸载 / CUDA Graph 协同
+- 相关度：4.7 / 5.0
+1. **核心贡献**：直击新一代长上下文稀疏注意力模型（如 Qwen3.8-Flash-Next、DeepSeek V4.1-Flash、GLM-5.2 等）的服务瓶颈，揭示了在主 KV 卸载至主机内存后，**索引缓存（Indexer Cache）反客为主吃掉高达 63%~75% 单请求 HBM** 的新痛点，提出了首个无需改动模型权重且完美兼容 CUDA Graph 的轻量级粗精两级索引卸载系统 Twindex。
+2. **原理解析**：现代稀疏注意力模型为了处理百万（1M）Token 长文本，会在每一步解码时通过一个轻量级“索引器（Indexer）”为全部历史 Token 打分，并仅加载得分最高的 Top-k 项的主 KV 进行 Attention 计算。当工程团队将沉重的主 KV 卸载到 CPU 主机内存后，却发现由于上下文极长，用于打分的索引器自己的 Cache（Index Cache）依然要驻留显存，成为了新的显存死锁源头。Twindex 巧妙地设计了双轨机制：在 GPU 显存中只保留一个高度紧凑的有损压缩残差副本（Coarse）；每次解码由该轻量副本在 GPU 上快速粗筛出一组候选子集；然后异步从主机内存调取对应候选行的原始高精度索引，由模型自身的 Indexer 精挑出真正的 Top-k。
+3. **关键结论**：在现代 GPU 上针对 1M 超长文本的全面测试中，Twindex 使得单卡能够并发服务的请求数量相比传统纯 KV 卸载方案分别提升了 1.78×（Qwen）、1.62×（DeepSeek V4.1）和 3.03×（GLM-5.2）；解码吞吐量提升高达 1.25×~2.54×，而模型基准任务的精度下降不到 3.1%。
+4. **背景地位**：在长文本处理从密集计算走向稀疏检索的演进浪潮中，学术界过去只关注主 KV 的搬运与量化，而忽视了稀疏寻址本身的元数据开销。来自字节跳动工程实战的 Twindex 填补了稀疏长文本推理系统工程的最关键拼图。
+5. **落地相关性**：直接适用于超长文本问答、代码库整体分析等大模型落地业务。算法无需微调权重，代码无缝嵌入底层 CUDA Graph 执行流，可直接迁移至企业内部的 vLLM、TensorRT-LLM 或自研长上下文服务引擎中。
 
 ---
 
-#### 4. A Fast, Programmable GPU-to-CPU Invocation Layer for GPU-Initiated Communication
-- 中文译名：KIWI：面向 GPU 侧发起通信的高性能可编程 GPU-to-CPU 调用运行时
-- 链接: https://arxiv.org/abs/2611.23848
-- 作者：Jiakun Yan, Shiksha Patel, David Sidler, Gengyu Rao, Brandon Potter, Bradford Beckmann
-- 单位：超威半导体 (Advanced Micro Devices, Inc. / AMD) 【工业界】
-- 分类：cs.DC, cs.LG
-- 方向标签：C. AI Infra (GPU 侧发起通信, 反向卸载 Reverse Offload, 亚微秒级低时延, MoE 通信优化, vLLM 集成)
-- 相关度：5/5
-
-1. 核心贡献：
-随着大模型基础设施演进到极致，算子融合（Fused Kernels）、持久核以及 MoE 专家动态路由等工作负载要求 GPU 能够直接从计算核内部自发触发跨卡甚至跨节点通信，而无需回到 CPU 宿主端进行耗时的内核边界同步。当前业界主流学术界与工业界库（如 NVSHMEM、rocSHMEM 的新分支）普遍推崇将网络传输控制逻辑直接搬到 GPU 线程上执行（即 GPUDirect Async, GDA），而把将任务交回给 CPU 主机代理线程处理的“反向卸载（Reverse Offload）”视为低效陈旧的备选项。AMD 官方研究团队在本文中做出了一个极具颠覆性的论断：**反向卸载被严重低估了，如果设计得当，反向卸载不仅完全能超越 GDA，而且应当成为第一类通信路径！** 团队研发了 **KIWI**：一个可编程的高性能反向卸载框架，实现了**亚微秒级的单向 Device-to-Host 时延**与高达数亿次/秒的操作吞吐，并在 vLLM 中将 MoE 专家并行通信延迟降低多达 2.3 倍。
-
-2. 原理解析：
-这就像在容器化网络与微服务中重新审视 Sidecar 与 In-kernel 调优的关系：
-- **GPUDirect Async 的隐形成本陷阱**：在 GPU 线程里直接处理复杂的网络协议栈、RDMA 队列对（QP）状态机与流控，会耗费宝贵的 GPU 寄存器资源与计算单元，导致计算内核占用率（Occupancy）断崖式下跌，且多线程争用网络网卡门铃（Doorbell）导致灾难性总线拥塞；
-- **极致优化的轻量级反向卸载通道**：KIWI 重新构建了 GPU 与 CPU Proxy 线程之间的交互通道。通过极简的共享环形缓冲区（Shared Circular Buffers）、无锁自旋机制与微体系结构级的缓存行对齐，消除了传统多核 CPU 代理轮询引起的互斥竞争与总线反弹，将 GPU 向 CPU 代理派发命令的单向耗时压缩至惊人的亚微秒级（Sub-microsecond）；
-- **可编程的用户自定义通信语义**：KIWI 不仅支持基础的 Put/Get/Atomic 操作，还向开发者开放了可编程接口，允许用户把与应用紧密耦合的特定通信聚合逻辑（如 MoE Token 路由汇聚）定义为单次调用；
-- **开箱即用的高性能应用库**：基于 KIWI 构建了类 SHMEM 通信库 **KIWI-P2P**，以及专门为大模型推理深度定制的混合专家路由通信库 **KIWI-EP**，无缝替换 vLLM 底层的 All-to-All 算子。
-
-3. 关键结论：
-- 在微基准测试中，KIWI-P2P 在端到端单向传输延迟与有效传输带宽上均全面超越了当前最先进的 GPUDirect Async 实现；
-- 在 AMD 旗舰 GPU 集群上，KIWI-EP 将 MoE 专家并行（Expert-Parallel）的 Dispatch 与 Combine 内核通信时延相较于现有官方最佳后端大幅降低了 **高达 2.3 倍**；
-- 在业界顶流推理引擎 **vLLM** 真实生产级端到端模型服务实测中，KIWI 将单 Token 输出生成耗时（Time Per Output Token, TPOT）直接**压缩了 29%**！
-- 完整代码已在 AMD 官方 GitHub 全面开源（https://github.com/AMDResearch/kiwi）。
-
-4. 背景地位：
-来自芯片巨头超威半导体（AMD Research）底层系统与架构团队的核心研发成果，主要作者包括 AMD 杰出研究员 Bradford Beckmann。这是异构通信领域对流行理念的一次重磅反思与事实纠偏，对于推动非 NVIDIA 生态（ROCm、AMD Instinct 系列算力卡）在大模型系统中的竞争力具有决定性意义。
-
-5. 落地相关性：
-对于在 Kubernetes 集群上部署私有化大模型推理平台、尤其是正在评估或采用国产/AMD GPU 算力的系统工程师具有巨大价值。在当前 vLLM / SGLang 生态中，MoE 模型的 All-to-All 专家通信往往是 Decode 阶段的严重瓶颈。KIWI 不仅开源可用，更向系统软件开发者指明：无需等待硬件复杂的直连协议升级，通过极致优化的主机代理反向卸载，即可在当前主流硬件上立即获得近 30% 的端到端推理性能大礼包。
+#### 6. Towards Scale-Up Networking: Challenges and Open Questions
+- 中文译名：迈向 Scale-Up 智算网络：挑战与开放性问题
+- 链接：https://arxiv.org/abs/2611.26156
+- 作者：Tingting Xu, Zixun Su, Xinyang Huang, Bowen Liu, Kun Tan, Dong Lin 等
+- 单位：香港科技大学, 华为【工业界】, 腾讯【工业界】, 阿里巴巴【工业界】
+- 分类：cs.NI, cs.DC
+- 方向标签：AI Infra / 算力集群网络 / Scale-Up 互联 / 拓扑与集合通信协议
+- 相关度：4.7 / 5.0
+1. **核心贡献**：由香港科技大学陈凯教授团队联合华为、腾讯、阿里巴巴三家中国顶级云与算力巨头共同撰写，是目前业界首份系统性拆解 AI 智算中心从传统横向“Scale-Out（以太网/InfiniBand）”迈向纵向“Scale-Up（NVLink/UALink/光学互联）”超节点互联演进的权威蓝图与挑战综述。
+2. **原理解析**：在分布式训练与超大模型推理中，节点间集合通信（All-Reduce、All-to-All）正从节点外网络下沉到节点内的高速域。传统以太网或 RoCE 网络就像是跨地域的公路网（TCP/IP、拥塞控制、丢包重传）；而 Scale-Up 网络则试图将数十乃至数百颗 GPU/加速器直接用高速总线（如 NVLink Switch Fabric 或开放的 UALink）紧密编织成一个统一的超节点（Mega-node）。这带来了颠覆性的系统变化：通信协议从基于消息传递（Message-passing）走向基于内存共享的负载/存储（Load/Store）语义；但这也引发了极其严苛的物理拓扑布线限制、无丢包仲裁、路由死锁以及跨多层交换的亚微秒级延迟一致性挑战。
+3. **关键结论**：论文从拓扑架构（Dragonfly、Fat-Tree 与光互联演进）、传输机制（硬件信用流控 Credit-based Flow Control vs PFC）、集合通信算子硬件卸载、以及容错自愈（亚微秒级链路降级）等维度进行了全面实测与量化对比，指出了当前专有互联封闭性与开源异构生态之间的鸿沟，并给出了明确的标准化推进路径。
+4. **背景地位**：标志着智算基础设施的竞争重心正式从传统的“集群网络（Scale-Out）”全面拓展至“机柜级纵向互联（Scale-Up）”。产学研四大顶级巨头的联合背书，使其成为未来几年数据中心网络规划与 GPU 集群架构设计的重要参考指南。
+5. **落地相关性**：对从事 AI 集群网络建设、Kubernetes 网络插件（CNI）以及分布式通信库（NCCL/RCCL）调优的工程师而言，这是必读的顶层设计文献，直接指导万卡集群的节点内部拓扑规划与网络监控方案选型。
 
 ---
 
-#### 5. A Runtime System for Mitigating Crossbar Port Contention on SM-Partitioned GPUs
-- 中文译名：GPCPlace：面向 SM 空间切分 GPU 的 Crossbar 端口争用缓解运行时系统
-- 链接: https://arxiv.org/abs/2611.24458
-- 作者：Ziwen Wang, Qi Luo, Kunlin Li, Changxi Liu, Dongsheng Wang, Yun Chen
-- 单位：香港科技大学（广州） (HKUST-GZ) 【知名实验室】、清华大学 (Tsinghua University) 【知名实验室】
-- 分类：cs.DC, cs.AR
-- 方向标签：C. AI Infra (GPU 空间共享与切分, CUDA Green Contexts / MIG, Crossbar 端口仲裁争用) & D. 性能与可靠性
-- 相关度：4.8/5
-
-1. 核心贡献：
-为了提高单卡利用率并削减昂贵的显卡拥有成本，在单张物理 GPU 上并发混部多个不同特性的任务是现代云原生 AI 集群的刚需。为了避免大吞吐型离线任务抢占全部计算核而导致在线关键任务（Latency-Critical, LC）遭遇长时间排队阻塞，NVIDIA 近年推出了 CUDA Green Contexts 等硬件级流多处理器（SM）空间切分机制（与开源的 libsmctrl、nvtaskset 类似），把物理卡上的 SM 划分为不同子集分给各个容器或进程。然而工程实践中普遍发现：**即便进行了硬隔离切分，高优 LC 任务依然会遭受高达数倍的严重降速！** 过去研究大多将其归咎于共享 L2 Cache 容量被洗刷或 DRAM 带宽争用。港科大（广州）与清华大学团队深入显卡微架构后首次揭秘：**跨 GPC 到 L2 Cache 的 Crossbar 交叉开关端口争用才是隐藏在幕后的性能杀手！** 为此，团队研发了透明的动态运行时系统 **GPCPlace**，在完全不改动应用程序的前提下，将关键任务性能提升高达 2.38 倍。
-
-2. 原理解析：
-这就像在多核服务器与 NUMA 架构中对容器进行 CPU 亲和性绑核与总线排障：
-- **显卡内部的微架构暗礁**：NVIDIA GPU 的硬件结构是将若干个 SM 组织成一个图形处理集群（Graphics Processing Cluster, GPC）。至关重要的硬件设计在于：**同一个 GPC 内部的所有 SM 共享唯一一个连接到全局 L2 Cache 交叉开关（Crossbar）的物理端口**；
-- **分散（Spreading）与紧凑（Packing）的两难绝境**：
-  - 默认情况下，CUDA Green Contexts 采取“均匀分散（Spreading）”策略，把分配给某个任务的 SM 均匀散布在所有 GPC 中。但这导致 LC 任务与低优后台任务（Background, BE）被活生生塞进了同一个 GPC，LC 任务发出的关键内存请求必须在 GPC 出口端口处苦苦排在大量粗暴 BE 请求之后，遭遇严重拥塞；
-  - 如果采取“紧凑聚合（Packing）”策略，把 LC 任务的所有 SM 严格隔离到专用 GPC 中，虽然避开了后台任务争用，但因为占用的 GPC 数量变少，LC 任务能利用的 Crossbar 物理端口总数也变少了，导致自身内存峰值带宽被死死卡住；
-- **动态性能画像与驱动级透明切分（GPCPlace）**：GPCPlace 在目标 GPU 上实时分析并发任务的访存强度与时延敏感度，定量权衡“端口争用惩罚”与“可用带宽损失”，在毫秒级内自适应选择最优的 SM 拓扑分布；通过动态拦截 CUDA 驱动层的 Kernel 发射调用设置 SM Mask，对上层应用与框架完全透明。
-
-3. 关键结论：
-- 在涵盖从数据中心到工作站的 14 款不同 GPU 架构、共 112 组实际工业混部工作负载下进行了大规模实测；
-- 相比官方 CUDA Green Contexts，GPCPlace 使高优延迟敏感任务（LC）平均提速 **1.15 倍**，在内存密集型严重冲突场景下最高提速高达 **2.38 倍**；
-- 在大幅压低高优任务时延的同时，低优先级的后台批量任务吞吐量几乎未受任何损耗。
-
-4. 背景地位：
-来自香港科技大学（广州）信息枢纽物联网学域陈云教授与清华大学计算机系王东生教授团队。该成果不仅填补了 GPU 微架构 Crossbar 互连在多租户切分场景下的学术研究空白，更是针对 NVIDIA 官方 CUDA 底层驱动分配机制的一次强有力技术革新。
-
-5. 落地相关性：
-对于在 Kubernetes 集群中借助 NVIDIA GPU Operator、vGPU、MPS 或最新 Green Contexts 实现 GPU 算力混部的云原生平台工程师而言，这是极其关键的底层认知与系统组件。平台运维人员常常遇到“即使给在线服务划定了专有 SM 算力切片，一旦混部离线训练，在线请求 P99 依然大幅超时”的幽灵问题。GPCPlace 揭示了该现象的物理根源并给出了驱动层无侵入的透明解法，是企业级 GPU 混部平台（如 KubeShare、Volcano、Koordinator）未来演进的必由之路。
+#### 7. TideCache: Efficient Hybrid LLM Serving with Transparent Cache Management and Layer-Wise Streaming
+- 中文译名：TideCache：面向混合架构大模型的高效推理系统——透明缓存管理与分层流式服务
+- 链接：https://arxiv.org/abs/2611.26619
+- 作者：Jinbin Luo, Xiaozhe Yao, Shang Yang, Zhijian Liu, Song Han, Qinghao Hu
+- 单位：麻省理工学院（MIT）【知名实验室】, 苏黎世联邦理工学院（ETH Zurich）, 加州大学圣迭戈分校（UCSD）
+- 分类：cs.DC
+- 方向标签：混合架构大模型推理 / 状态缓存管理 / 流水线流式传输 / 推理引擎运行时
+- 相关度：4.6 / 5.0
+1. **核心贡献**：针对 Attention 与线性 RNN（如 Mamba、DeltaNet、RWKV 等）混合架构大模型（Hybrid LLM）在线服务中的状态管理挑战，MIT 韩松团队提出了首个统一且透明的状态缓存管理与分层流式传输推理引擎 TideCache，消除了混合状态下的显存分配冲突，显著提升长文本与多会话推理吞吐。
+2. **原理解析**：混合架构大模型兼具了 Attention 层的强大召回能力和线性 RNN 层的无限长状态压缩特性。然而，这也给底层系统带来了噩梦：传统的 Transformer 只需要管理 KV Cache，而 Hybrid 模型在某些层需要管理常规 KV 块，在另一些层却需要维护固定尺寸的隐状态（Recurrent State）。现有的推理系统（如 vLLM）强行用一套内存池管理两者，造成严重的物理内存碎片化和显存利用率断崖。TideCache 提出了一种“透明状态虚拟化”机制，将不同层的状态生命周期解耦；同时结合分层流式传输（Layer-Wise Streaming），让状态在计算流水线到达前被预取进快速 SRAM/HBM，并在计算后立即移出，实现计算与内存搬运的深度重叠。
+3. **关键结论**：在多样化的混合模型（包括 Jamba、Bamba 等主流混合开源模型）评测中，TideCache 将长文本推理服务的吞吐量提升了 1.8×~3.4×，平均时延降低 35%，并在并发请求激增时将内存溢出（OOM）率压制到接近零。
+4. **背景地位**：随着纯 Transformer 架构的计算与显存成本在长上下文场景逼近物理极限，混合架构被普遍视为通往超级长文本的主流演进方向。TideCache 率先解决了混合模型工程落地的“最后一公里”系统调度支撑难题。
+5. **落地相关性**：对计划在生产环境上线部署新一代混合架构模型（如 AI21 Jamba 系列或混合注意力架构）的 AI Infra 团队而言，TideCache 提供了直接可用的运行时优化范式，能显著降低模型上线所需要的集群 GPU 节点开销。
 
 ---
 
-#### 6. Towards Fair Resource Sharing in Agentic LLM Serving
-- 中文译名：迈向 Agentic 大模型服务中的公平资源共享：跨层调度与准入控制系统 Duru
-- 链接: https://arxiv.org/abs/2611.23558
-- 作者：Sehyeon Lee, Yuchen Xia, Zhaoyang Hong, Jinrui Hu, Anuradha Pandey, 等 (Evan Zhao, Ankita Nayak, Nishil Talati)
-- 单位：伊利诺伊大学厄巴纳-香槟分校 (UIUC) 【知名实验室】、Gimlet Labs 【工业界】
-- 分类：cs.OS, cs.AR
-- 方向标签：C. AI Infra (AI Agent 多步推理服务, 状态依赖调度, 减速比公平性, 准入控制与弹性伸缩) & B. 编排与调度
-- 相关度：4.5/5
-
-1. 核心贡献：
-随着 AI Agent（如自主编码助手、多智能体协同仿真、复杂金融分析工具）的蓬勃发展，推理集群承载的负载正从单轮短平快的问答，转变为长生命周期、多轮循环反馈（Tool Calling、代码执行、反思循环）的 Agent 工作流。当多个复杂的 Agent 共享底层的 LLM 推理服务集群时，端到端调用栈上的严重资源争用引发了各 Agent 之间极度不均衡的性能崩塌。现存的经典大模型调度策略（如 vLLM/SGLang 的请求级、Token 级公平排队）只看眼前单次请求，完全割裂了 Agent 内部前后依赖的长链条状态。UIUC 与 Gimlet Labs 团队提出了首个面向 Agentic 工作负载的跨层端到端服务调度框架与系统 **Duru**：基于归一化减速比（Slowdown）定义多智能体公平性，并在网关路由与运行时排队层面实施联合自适应调控与 SLO 感知自动扩缩容。
-
-2. 原理解析：
-这就像在 Kubernetes 集群中管理具有强依赖 DAG 关系的有状态微服务流水线，而非孤立的无状态 Pod：
-- **单步调度的“只见树木不见森林”**：假设 Agent A 是一组多步轻量调用，而 Agent B 是一组重型大文本分析。现有的 Token 级调度器认为“只要这一个 Batch 里大家分到的 Token 差不多就是公平的”，但 Agent A 的每一次短暂输出都被 Agent B 带来的批处理排队拉长一点，由于 Agent A 必须走完 10 轮循环才能产出结果，其端到端整体完成时间遭遇了高达几十倍的**累积级联恶化（Compounded Slowdown）**；
-- **基于单机独立运行基线（Standalone Baseline）的真实减速比追踪**：Duru 构建了严格的理论框架，将每个 Agent 在当前共享集群下的实际耗时与其独占资源时的基线耗时进行对比，以其实际遭受的相对减速比作为核心公平性度量信号；
-- **跨路由与运行时的动态联合干预（Duru）**：在集群入口的 Router 层，Duru 监控各 Agent 当前累积的减速偏差，将新步骤智能分流至压力适宜的后端实例；在单实例 Runtime 内部，通过准入异常控制（Admission Exceptions）动态打捞处于饥饿边缘的长链 Agent，阻断级联延迟雪崩；
-- **基于减速比的集群 SLO 弹性伸缩**：将减速比直接联动至底层算力集群的 Autoscaling 引擎，当检测到多 Agent 争用导致整体减速比突破业务 SLO 警戒线时，主动触发实例拉起。
-
-3. 关键结论：
-- 基于真实多智能体工作负载与长交互轨迹进行端到端全链路实测；
-- Duru 极其显著地压制了多租户并发 Agent 之间的减速比方差（Variance of Slowdown），彻底消除了长链 Agent 被连续饿死的长尾极端情况；
-- 在达成严苛多智能体端到端完成时间 SLO 的前提下，Duru 能够大幅收敛资源分配震荡，并在吞吐量与系统饱和度上与纯吞吐导向的贪心调度器保持持平。
-
-4. 背景地位：
-该研究由美国顶尖计算机系统重镇 UIUC 体系结构与系统实验室 Nishil Talati 教授团队与硅谷新兴大模型基础设施企业 Gimlet Labs 联合打造。这是学术界与工业界首次将研究视线从“单次请求的公平”拓展至“多轮智能体工作流（Agent-level Workflow）的端到端系统公平”。
-
-5. 落地相关性：
-对于在企业内通过 K8s 网关与推理服务平台（如部署了多个针对不同部门的 Dify、LangChain、AutoGen 等 Agent 业务）的平台架构师而言，这是极具实操价值的系统设计参考。单纯依靠传统 API 网关限流或 vLLM 内置调度根本无法保证复杂 Agent 的端到端交互体验。将 Duru 提出的 Agent 级累积减速比监测与路由准入逻辑嵌入网关与 Ingress 控制器，是未来支撑复杂企业级 AI Agent 应用规模化落地的核心技术壁垒。
+#### 8. Aggron: Aggressive Compression of Agentic KV Caches during Head-of-Line Stalls in the Request Queue
+- 中文译名：Aggron：利用请求队列队头阻塞停顿激进压缩 Agent KV 缓存的调度服务系统
+- 链接：https://arxiv.org/abs/2611.26435
+- 作者：Tony Hong, Mengmei Ye, Hubertus Franke, Chen Wang, Fan Lai
+- 单位：伊利诺伊大学厄巴纳-香槟分校（UIUC）, IBM研究院【知名实验室/工业界】
+- 分类：cs.DC
+- 方向标签：Agent 推理服务 / 请求队列队头阻塞 / 动态 KV 缓存压缩 / 调度器协同
+- 相关度：4.5 / 5.0
+1. **核心贡献**：首次揭示了在连续批处理（Continuous Batching）推理引擎服务长思考或 Agent 工作流时普遍存在的“队头阻塞（HOL Blocking）气泡”现象，并提出了一种创新的协同调度系统 Aggron：动态借用这些排队停顿时间窗口，对队列中等待的 Agent 会话历史 KV Cache 实行激进的语义感知无损/低损压缩，从而换取集群显存的极大释放。
+2. **原理解析**：在网络交换机或消息队列中，当队头的数据包被阻塞时，后续所有包都必须排队等待。在 LLM 连续批处理调度中，一个巨大的长请求在执行 Prefill 或漫长的长序列生成时，由于显存配额紧张，调度队列中的其他等待请求（包括活跃 Agent 的后续 step）只能原地干等（即 HOL 停顿）。Aggron 变废为宝：它在系统后台部署了一个“见缝插针”的压缩调度管道。调度器一旦检测到当前批处理出现显存瓶颈或排队气泡，便利用碎片化的空闲微架构带宽，对等待池中的 Agent 历史 KV Cache 进行结构化剪枝与摘要提炼；当轮到该请求执行时，其占用的 HBM 已经大幅缩减，从而能够塞入更大的批次（Batch Size）并行执行。
+3. **关键结论**：在多轮复杂 Agent 工作负载（如 WebArena、ToolBench 等）测试下，Aggron 使得推理系统整体吞吐量提升了 1.6×~2.3×，并将排队尾延迟（P99）降低了多达 47%，同时依靠上下文保护机制确保模型任务解答准确率不受损伤。
+4. **背景地位**：将上层请求排队调度（Request Queue Scheduling）与底层显存压缩（KV Compression）深度融合，打破了“压缩即额外延迟开销”的固有思维，开辟了利用排队停顿反哺系统吞吐的全新跨层设计维度。
+5. **落地相关性**：对于在云原生集群（K8s）上使用 Kueue 或 Volcano 调度多租户 AI 请求的系统工程师而言，Aggron 提供了队列层与执行层联动的极佳范例，非常适合集成入网关代理（Gateway Proxy）与推理 Controller 中。
 
 ---
 
-#### 7. Benchmarking Linux CGroup and Schedule Idle
-- 中文译名：Linux cgroup 与 SCHED_IDLE 混部性能隔离基准测评
-- 链接: https://arxiv.org/abs/2611.23655
-- 作者：Anna Arpaci-Dusseau
-- 单位：论文未注明 (作者供职于威斯康星大学麦迪逊分校 / UW-Madison) 【知名实验室】
-- 分类：cs.OS
-- 方向标签：A. 容器与运行时 (Linux cgroup 资源配额与权重, CFS 调度器, SCHED_IDLE 策略, 容器混部尾延迟) & D. 性能与可靠性
-- 相关度：4.5/5
-
-1. 核心贡献：
-Linux control groups（cgroups）与命名空间（namespaces）构成了现代容器引擎（Docker、containerd、runc）乃至沙箱运行时（gVisor、Kata Containers）的底层资源隔离支柱。在公有云和 Serverless（如 AWS Lambda、Knative）多租户计算节点上，运营商普遍通过 cgroup 的 `cpu.weight`（权重配额）和 `cpu.max`（硬限额限制）将关键在线服务（Latency-Critical, LC）与重型后台计算（Best-Effort, BE）进行同机混部以追求资源极限利用率。然而，Linux 默认的 CFS（完全公平调度器）在面对极端混部时，究竟会给高优服务的长尾延迟带来多大程度的损伤？`cpu.weight`、`cpu.max` 与 Linux 内核自带的 `SCHED_IDLE` 调度策略交叉组合后究竟表现如何？来自威斯康星大学麦迪逊分校系统团队的知名学者对此展开了详尽、严谨的基准评测研究，揭示了微秒级尾延迟抖动的内在诱因，并开源了标准化评测套件。
-
-2. 原理解析：
-这就像在 Kubernetes 集群的 Node 节点上，探究 Kubelet 设置的 `limits`/`requests` 与 Linux 内核调度队列内部的真实微观博弈：
-- **vruntime 与抢占的残酷现实**：CFS 调度器通过追踪进程的虚拟运行时间（`vruntime`）来决定下一个投入运行的线程。尽管 `cpu.weight` 降低了后台任务的权重增长速度，但在突发到达瞬间，只要后台 BE 线程已经在 CPU 核上运行，高优 LC 线程从就绪（Runnable）到真正触发上下文切换（Context Switch）仍然存在不可避免的纳秒到微秒级调度滞后；
-- **SCHED_IDLE 的诱惑与代价**：内核提供的 `SCHED_IDLE` 策略理论上只在 CPU 完全无事可做时才允许后台任务运行。实测表明，**仅使用 SCHED_IDLE 策略能给在线高优服务提供最完美的尾延迟保护**——在重型矩阵乘法后台进程并发轰炸下，LC 服务的 P99 尾延迟恶化仅有微乎其微的 **+0.1%**（而无隔离 baseline 恶化高达 +30%）！然而天下没有免费的午餐，此时后台任务的吞吐量被暴跌了 **7.5 倍**；
-- **组合策略的“反直觉陷阱”**：当运维人员试图将 `cgroup (cpu.weight)` 与 `SCHED_IDLE` 强行组合使用时，出现令人惊讶的反直觉现象：虽然 P99 时延看似有微小改善，但超长尾的 **P99.99 延迟却反常暴增了 65%**！这是因为 CFS 调度器在同时处理 cgroup 层级调度树与 idle 标志时，进程唤醒时的快速迁移逻辑与 CPU 亲和性缓存预热逻辑产生紊乱，反而导致关键线程在不同核之间频繁颠簸。
-
-3. 关键结论：
-- 在 CloudLab 双节点 16 核物理环境与 Linux 5.15 LTS 内核上完成了涵盖轻载、合理负载与重载工况的数万次请求严密对比；
-- 使用单一的 `cpu.weight` 配额能将后台任务对尾延迟的冲击平均削减 20%，但高优服务的 P99 仍然会被迫承受 15%~30% 的不可逆延迟上升；
-- 评测证明，当前的 Linux CFS 调度原语无法在“零尾延迟冲击”与“后台高吞吐利用”之间取得兼顾，为多租户容器与 Serverless 底层运行时提出了重新设计调度原语的迫切需求；
-- 评测基准代码已全面开源（https://github.com/AnnaAD/cgroup-benchmark）。
-
-4. 背景地位：
-作者 Anna Arpaci-Dusseau 是分布式与存储系统领域的顶级学术权威、威斯康星大学麦迪逊分校（UW-Madison）计算机系教授。该研究以纯粹扎实的实验系统学方法，对支撑当今全部容器基础设施的 cgroup/CFS 调度基石做出了透彻体检。
-
-5. 落地相关性：
-对于所有在 Kubernetes 集群中探索高低优先级混部（Colocation）、离在线混部（如利用 Kube-batch、Koordinator、Volcano 混部 Spark/Flink 与在线 Web/API）的基础架构 SRE 和性能调优专家而言，这是必读的避坑指南。文章明确告诫：在追求资源利用率时，盲目依赖内核 `cpu.weight` 绝对无法消除在线 P99 抖动；而如果滥用 `SCHED_IDLE`，必须预估离线计算被饿死数倍的业务代价。
+#### 9. LightningMoBA: Accelerating Mixture of Block Attention via Dynamic Routing, KV-Centric Execution and Runtime Pipelining
+- 中文译名：LightningMoBA：基于动态路由、KV 中心执行与运行时流水线加速分块注意力混合架构
+- 链接：https://arxiv.org/abs/2611.26268
+- 作者：Yingqi Shi, Junru Lu, Yun Liu, Di Yin, Xing Sun
+- 单位：腾讯优图实验室【工业界】
+- 分类：cs.DC
+- 方向标签：稀疏注意力 / MoBA / 动态路由 / GPU 运行时流水线
+- 相关度：4.4 / 5.0
+1. **核心贡献**：腾讯优图实验室针对长序列稀疏注意力算法 MoBA（Mixture of Block Attention）的现有实现（如 FlashMoBA）中存在的显存碎片化与算力不均衡痛点，提出了高度工程优化的高性能执行引擎 LightningMoBA，实现了端到端计算提速高达 1.8×~2.4×。
+2. **原理解析**：MoBA 算法通过为每个 Query 动态挑选相关的 KV 数据块来跳过无关计算。但现有的 GPU 实现采用“Query 中心”的执行调度逻辑：每个计算线程块（Threadblock）负责一部分 Query，再去显存中拉取所需的分散 KV 块。由于不同 Query 挑选的 KV 块严重重叠且不均匀，这导致重复的显存访存开销以及严重的负载失衡（尾部线程块严重拖垮整体完成时间）。LightningMoBA 颠覆了执行视角，转为“KV 中心”调度模式：以物理 KV 数据块的连续驻留为主导，反向聚合命中该块的所有 Query 任务；同时引入动态门控阈值路由与软件流水线（Runtime Pipelining），让异步 DMA 数据搬运与 Tensor Core 计算完全并行重叠。
+3. **关键结论**：在多样化长上下文（32k 到 256k）推理评测中，LightningMoBA 在保持数学等价性与注意力精度的前提下，核函数（Kernel）计算延迟相比 FlashMoBA 降低了 43%~58%，并将 GPU HBM 显存带宽利用效率逼近硬件理论极限（达到 85% 以上有效访存利用率）。
+4. **背景地位**：大模型架构正在经历从稠密注意力向分块稀疏注意力的大规模迁徙。腾讯团队直接从工业级部署痛点出发，重构了这一前沿算子的底层执行模式，代表了工业界在算子与运行时微架构层面的顶尖优化水平。
+5. **落地相关性**：该算子直接以高性能 CUDA/Triton 核形式提供，可作为即插即用的注意力算子后端无缝替换标准自注意力实现，特别适合集成至面向长视频理解、长文档分析的生产级推理系统。
 
 ---
 
-#### 8. Polymorph: Operating System Kernel Optimization Through Artificial Intelligence
-- 中文译名：Polymorph：基于人工智能的操作系统内核策略动态自适应优化系统
-- 链接: https://arxiv.org/abs/2611.23644
-- 作者：Dean Sysman, Georgios Liargkovas, Tal Zussman, Hasan Zengin, Petra Hedesiu, 等 (Hubertus Franke, Tamar Eilam, Kostis Kaffes, Asaf Cidon)
-- 单位：哥伦比亚大学 (Columbia University) 【知名实验室】、IBM 研究院 (IBM Research) 【工业界】
-- 分类：cs.OS
-- 方向标签：A. 容器与运行时 (eBPF 内核可编程性, sched_ext 进程调度器, Page Cache 逐出策略, AI 在线调优) & D. 性能与可靠性
-- 相关度：4.5/5
-
-1. 核心贡献：
-长期以来，Linux 等主流操作系统采用单体内核设计，核心机制（如 CFS/EEVDF 进程调度器、Page Cache 页缓存替换）采用固定的全局通用策略，应用只能通过 `madvise()`、`nice` 等极其有限且粗糙的接口传递 Hint，收效甚微。近年来，随着 **eBPF** 技术的爆发，特别是 Linux 6.12+ 正式引入的 `sched_ext`（允许使用 eBPF 动态加载用户自定义调度器），内核子系统迎来了前所未有的可编程性。然而，“拥有编写内核策略的自由”与“知道该针对特定工作负载部署哪种最优策略”之间存在巨大鸿沟。如果利用离线 AI Agent 暴力搜索，针对每个具体应用都要耗费 1.2~2.4 亿 Token 且无法应对线上流量漂移；传统的基于少量静态 Knob 的自动调参器又受制于表现力贫乏。哥伦比亚大学与 IBM 研究院团队提出了 **Polymorph**：首个基于 AI 的内核策略全自动开发、参数化生成与在线轻量级微调部署系统。
-
-2. 原理解析：
-这就像在 Kubernetes 节点上，结合大模型代码生成与秒级运行的 Sidecar 自适应调谐器：
-- **两层解耦的自适应设计（Two-Tier Architecture）**：Polymorph 坚决不在内核运行时的关键路径中放置大模型，而是将流程解耦为“离线一次性泛化策略合成”与“在线轻量化免模型参数调优”；
-- **AI Agent 一次性编写高度参数化的 eBPF 内核程序**：由 AI 专家 Agent 对特定内核子系统（如 Page Cache 换页逻辑或 `sched_ext` 调度器）进行深入理解，一次性生成一个结构高度灵活、预留丰富动态权重旋钮的通用 eBPF 策略模板。整个过程仅需消耗 1600 万 Token（只有离线暴力搜索的十分之一以下），且只需运行一次；
-- **用户态超轻量自适应 Tuner 在线收敛**：在生产节点的用户空间中，Polymorph 部署一个极小开销的轻量级调优进程，它实时监听应用的性能遥测反馈（如缓存未命中率、上下文切换时延、任务排队长度），利用经典的在线优化算法动态拨动 eBPF 策略中的参数，无需大模型介入，在毫秒级内自适应响应流量模式突变。
-
-3. 关键结论：
-- 在 **Page Cache** 优化测试中，面对完全未见过的真实生产数据访问轨迹，Polymorph 相比 Linux 默认的 LRU 机制吞吐量提升了 **8.4%**，两倍于此前人类专家设计的最佳手工策略；
-- 在 **进程调度器（sched_ext）** 测试中，面对 6 种不同特性的典型并发工作负载，Polymorph 相比 Linux 官方默认调度器（CFS/EEVDF）实现了惊人的 **2.75 倍** 性能跃升，全面超越了此前学术界手工精心编写的最佳固定 `sched_ext` 策略（2.27 倍）；
-- 系统开销极低，在动态流量变动时能在数秒内迅速完成再收敛。
-
-4. 背景地位：
-来自美国哥伦比亚大学知名操作系统学者 Asaf Cidon、Kostis Kaffes 教授团队，联合 IBM 沃森研究院（IBM T.J. Watson Research Center）系统先驱 Hubertus Franke 与 Tamar Eilam 团队的重磅力作。这是将大语言模型代码合成能力与 eBPF 内核可扩展机制完美结合的先锋里程碑。
-
-5. 落地相关性：
-对于致力于云原生节点性能极限优化、高频交易系统、分布式数据库（RocksDB、PostgreSQL）以及容器化调度底座的基础架构团队，Polymorph 展示了颠覆传统运维的全新图景。随着 `sched_ext` 成为 Linux 官方正式特性，未来企业无需再苦苦等待内核社区为特定业务场景修补调度器，而是可以借助类似 Polymorph 的自动化架构，以 eBPF 为执行底座，为生产集群自动生成量身定制且能随流量自适应呼吸的内核子系统。
+#### 10. AscMLA: Unlocking FP4 Efficiency for Long-Context MLA Decoding through Asymmetric Scaling
+- 中文译名：AscMLA：通过非对称缩放解锁长上下文 MLA 解码的 FP4 高效计算
+- 链接：https://arxiv.org/abs/2611.26106
+- 作者：Zechun Zhou, Zhiyong Zheng, Xiaomin Zhang, Lin Ye, Han Li, Jingwei Sun 等
+- 单位：中国科学技术大学, 快手科技【工业界】
+- 分类：cs.DC
+- 方向标签：DeepSeek MLA 架构 / FP4 量化 / 非对称缩放 / 显存带宽优化
+- 相关度：4.3 / 5.0
+1. **核心贡献**：针对 DeepSeek 等模型所采用的多头潜在注意力机制（Multi-Head Latent Attention, MLA），攻克了将其 KV 缓存极限压缩至 FP4（4-bit 浮点）格式时的动态范围崩溃难题，提出了首个保持高精度的非对称缩放（Asymmetric Scaling）方案 AscMLA。
+2. **原理解析**：DeepSeek 的 MLA 架构通过将 Key 和 Value 投影压缩到一个共享的低维潜空间（Latent Vector），从而在解码时大幅缩减 KV Cache 体积。然而，如果要进一步将其量化为极低位宽的 FP4，工程团队遭遇了阻碍：因为 K 和 V 共享同一个潜向量，而 K 和 V 在实际注意力矩阵乘法中对动态范围（Dynamic Range）和离群值（Outliers）的敏感度完全不同；强行采用传统的单一缩放因子（Scaling Factor）会导致关键信息被严重抹平，导致生成胡言乱语。AscMLA 提出了创新的非对称双尺度因子体系，在不破坏 MLA 共享潜空间数学优雅性的前提下，将通道缩放与块缩放解耦，并针对现代 GPU（如 NVIDIA Blackwell / Hopper 架构）的 FP4 Tensor Core 实现了专门的融合解码算子。
+3. **关键结论**：在 128k 超长文本解码任务中，AscMLA 将 KV Cache 的显存足迹直接在 MLA 原本极小的基础上再削减了一半，推理生成吞吐量跃升 1.7×~2.1×，而在长文本检索（Needle In A Haystack）和复杂推理评测中几乎完全维持了原始 FP16/BF16 的准确率水准。
+4. **背景地位**：DeepSeek 系列模型的开源引发了业界对 MLA 架构的狂热拥抱。快手与中科大团队的这项工作率先在超低比特（FP4）极限下解决了 MLA 的工程量化难题，为大规模低成本部署提供了关键技术支撑。
+5. **落地相关性**：对于在生产环境中运维 DeepSeek-V2/V3 或其衍生模型的企业 AI 平台工程师，该方案可直接用于削减显卡配额，在现有 GPU 算力集群上实现翻倍的并发承载能力。
 
 ---
 
-#### 9. Detecting Empty Abstractions and Pruning Dead Paths in the Linux eBPF Verifier with Abstract Step Functions
-- 中文译名：基于抽象步进函数在 Linux eBPF 验证器中检测空抽象并剪枝死路径
-- 链接: https://arxiv.org/abs/2611.23584
-- 作者：Harishankar Vishwanathan, Srinivas Narayana, Santosh Nagarakatte
-- 单位：罗格斯大学 (Rutgers University) 【知名实验室】、印度理工学院马德拉斯分校 (IIT Madras) 【知名实验室】
-- 分类：cs.PL, cs.OS
-- 方向标签：A. 容器与运行时 (Linux eBPF 验证器, 抽象解释, 死代码路径剪枝, 内核崩溃与超时根治, Linux 主线合并)
-- 相关度：4.2/5
-
-1. 核心贡献：
-eBPF 已经成为现代云原生基础设施的“中枢神经系统”，为 Kubernetes 容器集群提供了网络代理（Cilium）、安全运行时拦截（Falco）与高精度可观测性。然而，确保不可信 eBPF 程序安全进入内核的关键防线——**Linux eBPF 验证器（Verifier）**，多年来一直是开发者最头疼的噩梦。验证器采用抽象解释（Abstract Interpretation）来静态推导寄存器状态。当遇到条件分支时，跨不同抽象域（如数值区间域与三态位掩码 `tnum` 域）的细化可能会产生互相矛盾的约束，这意味着该分支在运行时是绝对不可达的“死代码路径（Dead Path）”。然而，**Linux 内核验证器设计之初缺乏空集（$ot$）的数学表示**，无法识别抽象域交集为空，导致其继续盲目分析死路径，不仅引发严重的状态爆炸（超出一万条指令上限被内核强行拒绝加载），更会触发内核断言崩溃（Domain Invariant Violation）。罗格斯大学与 IIT Madras 团队提出了**抽象步进函数（Abstract Step Functions）**框架，实现了 $O(1)$ 常数时间的严谨判空与死路径剪枝，**核心补丁已正式合入 Linux 主线内核代码！**
-
-2. 原理解析：
-这就像在 Kubernetes CI/CD 流水线中进行静态语法与安全检查，在编译器分析树中瞬间剪除永远不可能触发的死循环：
-- **致命的幽灵状态与主线内核隐患**：在验证器内部，一个寄存器同时由有符号区间、无符号区间和三态位掩码（`tnum`，用 0、1 和未知位表示）共同约束。在分支跳转后，区间可能推导出 `[5, 10]`，而位掩码却要求 `r1 & 1 == 0` 但最低有效位已被锁死为 1。此时两者的数学交集是空集（$ot$）。但内核由于没有判空标记，硬把这个自相矛盾的非法状态当成有效状态喂给下游的抽象归约算子，直接触发内核 Invariant 破坏，引发系统崩溃或误报拒绝合法程序；
-- **常数时间抽象步进算子（tnum_step）**：如果遍历区间内的所有数值逐一比对位掩码，验证耗时将直接爆炸。研究团队在数学上开创了抽象步进函数，证明了可以在不枚举单个值的前提下，仅需几个位运算指令直接“跨步跳跃”到满足三态位掩码的下一个最小整数。团队设计了经过严格形式化证明的 `tnum_step` 算子，在 $O(1)$ 时间内精准判定非凸位掩码与区间是否存在交集；
-- **即时死路径剪枝（Dead Path Pruning）**：利用该多域判空技术，验证器在分支细化阶段一旦发现矛盾，立即斩断该执行分支，根本无需进入后续探索。
-
-3. 关键结论：
-- 彻底根除了因死分支导致下游算子违反内核前置条件（Domain Invariant Violation）的多年沉疴；
-- 在包含海量复杂 eBPF 程序的生产级测试套件（如 Kubernetes 明星网络组件 **Cilium**）与 Linux 内核官方自测套件中进行了严格测试，消除了误报拒绝与验证超时，且判空引入的整体验证时延开销仅有微不足道的 **1.48%**；
-- 研发的 `tnum_step` 算法代码与相关修复补丁已被 Linux 内核社区正式采纳并合并入 **Linux 主线内核**，成为全球数十亿台 Linux 设备的底层安全构件。
-
-4. 背景地位：
-来自美国罗格斯大学（Rutgers）ACM Fellow、形式化验证与编程语言权威 Santosh Nagarakatte 教授团队与印度理工学院马德拉斯分校（IIT Madras）的网络系统团队。论文结合了严格的程序分析形式化证明与 Linux 顶级内核黑客工程实践，是计算机理论完美反哺核心工业软件的典范之作。
-
-5. 落地相关性：
-对于在 Kubernetes 集群中大规模部署 Cilium（eBPF CNI）、BCC/bpftrace、Pixie 或自研安全 eBPF LSM 探针的基础架构研发人员，这是重大利好。大家在编写复杂带有循环或多分支边界判断的 eBPF 业务代码时，经常会遭遇玄学的 `verifier log: ... invalid register range` 报错或莫名其妙被判定指令超限。该研究从内核底层根治了该问题，伴随新版本内核升级，大规模 eBPF 程序的加载成功率与调试体验将得到质的飞跃。
+#### 11. Live Migration of Gated DeltaNet Requests: Exact Catch-Up and the Cost of Log Backlog
+- 中文译名：Gated DeltaNet 请求的在线热迁移：精确追赶机制与日志积压开销分析
+- 链接：https://arxiv.org/abs/2611.26153
+- 作者：Hanqing Yu, Jiaqi Yang, Si Wu, Feng Li, Xiuzhen Cheng, Pengfei Hu 等
+- 单位：山东大学
+- 分类：cs.DC
+- 方向标签：线性模型状态迁移 / 流式请求热迁移 / 节点排空与容错 / K8s Pod 排水
+- 相关度：4.2 / 5.0
+1. **核心贡献**：针对前沿循环线性注意力模型 Gated DeltaNet（GDN）在分布式生产环境下的流式请求在线热迁移（Live Migration）问题，系统性分析了状态快照、批处理重放和增量日志机制的权衡，提出了保障数值位级严格精确一致（Bitwise Exact）的“精确追赶（Exact Catch-Up）”热迁移系统。
+2. **原理解析**：在云原生 Kubernetes 集群运维中，节点排水（Node Draining）、维护升级或突发故障要求将正在运行的容器/Pod 驱逐迁移。对于无状态 Web 服务，这很容易；但对于大模型正在流式输出长答案的连接，暴力掐断会导致用户体验严重受损。对于线性 RNN/GDN 模型，其状态被持续压缩在循环矩阵中。迁移时，源节点（A）需要将状态交接给目标节点（B）。传统通过重放历史 Token 的方法在不同批处理大小下会导致浮点计算误差累积，破坏输出一致性。该方案设计了一条紧凑的更新日志迁移路径，配合精确追赶协议：目标节点在后台启动单 Token 规范解码路径追赶状态，在完成交接的瞬间实现源节点的即刻释放（Source Release），用户端仅察觉到数十毫秒级的平滑交接。
+3. **关键结论**：在两组异构 GPU 部署的大规模实验（1,350 次流式迁移基准）中，紧凑日志方案在全部 90 种场景配置下均实现了最短的精确切换停顿（Exact Handoff Gap）；在 10 MB/s 的受限网络链路上，将交接中位时延从 460ms 压缩至 81ms，极早地释放了源节点算力，并严格保证了迁移前后生成 Token 的位级一致性。
+4. **背景地位**：云原生环境下的“零停机维护与动态资源再平衡”是基础设施领域数十年的经典课题。随着流式长生成服务的普及，该工作将经典 OS/虚拟机的实时迁移理念成功带入了新型非 Transformer 线性循环架构推理系统中。
+5. **落地相关性**：对负责 Kubernetes 弹性调度（如根据节点利用率进行 Pod 动态迁移动态装箱）以及集群排水升级的 SRE 与平台工程师提供了至关重要的理论与实践支持。
 
 ---
 
-#### 10. NarrowSpec: Draft Hidden Width Need Not Match the Target in Speculative Decoding
-- 中文译名：NarrowSpec：投机解码中草稿模型隐层维度无需与目标模型绑定的系统加速方法
-- 链接: https://arxiv.org/abs/2611.23835
-- 作者：Alagappan Valliappan, Ankit More, Dheevatsa Mudigere, Jatin Mitra
-- 单位：英伟达 (NVIDIA) 【工业界】
-- 分类：cs.CL, cs.LG, cs.PF
-- 方向标签：C. AI Infra (投机解码推理系统, 草稿模型宽度解耦, 算子折叠, SGLang / vLLM 显存带宽优化)
-- 相关度：4.2/5
-
-1. 核心贡献：
-投机解码（Speculative Decoding, SD）是当前主流推理引擎（如 vLLM、SGLang）突破大模型自回归生成“访存受限（Memory-Bound）”瓶颈的核心武器。其核心逻辑是用极快的小草稿模型（Draft Model）一口气推测多个候选 Token，再由大目标模型（Target Model）单次前向传播统一核验。近年来顶流前沿草稿模型（如 EAGLE-3、DFlash）为了追求高接收率，普遍将草稿网络深度挂接在目标模型的隐藏状态输出上，但这带来了一个严重的系统架构约束：**学术界和工业界普遍默认草稿模型的残差流隐藏层宽度（Hidden Width）必须与目标模型保持完全一致（例如 4096 或 8192 维）**。这导致草稿模型本身的 GEMM 矩阵乘法计算量和权重/KV Cache 访存开销极其沉重，大大抵消了投机加速红利。来自英伟达（NVIDIA）的系统架构师团队提出了 **NarrowSpec**：证明并实现了草稿模型隐藏层宽度完全可以缩减至原模型的 1/2 乃至 1/4，同时在推理框架中实现无损算子折叠，解码时延取得显著跃升。
-
-2. 原理解析：
-这就像在微服务链路中给重型数据包做极端瘦身：
-- **打破隐藏层宽度的教条枷锁**：以往开发者认为只有维度对齐才能有效吸收大模型的上下文特征。NarrowSpec 经过深入的系统敏感度分析指出：草稿模型的使命仅仅是快速产出高概率 Token 分布，其表征能力并不需要等宽的庞大流形；
-- **全残差流瘦身与权重投影折叠（Operator Folding）**：NarrowSpec 将草稿网络内部的全部注意力层、MLP 层和残差流截断至原本宽度的 1/2 或 1/4；对于类似 DFlash 这种直接借用目标模型庞大词表投影矩阵（`lm_head`）的先进草稿结构，NarrowSpec 创新性地在数学上将训练好的适配层权重（Output Adapter）直接线下折叠进 `lm_head` 中，合并为一个更小尺寸的投影矩阵，在运行时完全不引入多余的算子发射与显存中间缓冲，输出 Logits 在浮点精度内完全等价；
-- **显存带宽吞吐的极致释放**：隐藏层减半意味着草稿模型自身的权重加载量和 KV Cache 内存流量暴跌为原本的 1/4 到 1/2，极大压低了每次投机迭代中草稿模型的单步耗时（$t_{	ext{draft}}$），使得单位时间内可以尝试更多 Token。
-
-3. 关键结论：
-- 基于主流开源推理引擎 **SGLang** 进行深度系统集成；在最新的 NVIDIA Blackwell B200 GPU 与 DGX Spark（GB10）物理硬件上对两大开源旗舰模型 Qwen3-8B（NVFP4 量化）与 GPT-OSS-20B（MXFP4 量化）进行了全面实测；
-- 在 Batch Size = 1 场景下，将草稿模型收缩至 1/2 或 1/4 宽度后，在 B200 上带来 **1.06~1.12 倍** 的端到端额外解码加速，在 GB10 上更是带来高达 **1.13~1.44 倍** 的吞吐飞跃；
-- 在大并发批处理场景（Batch Size 32 直至显存占满）下，NarrowSpec 均能稳定保持高达 **1.21 倍** 的净吞吐增益，且在全部测试矩阵中没有任何一个狭窄草稿模型性能跑输全宽基线。
-
-4. 背景地位：
-来自顶级算力芯片霸主英伟达（NVIDIA）基础软件系统团队。论文直击投机解码在大并发生产环境落地的计算/访存天花板，为工业界草稿模型的低成本训练与极速推理开辟了全新的设计空间。
-
-5. 落地相关性：
-对于在云原生集群中基于 vLLM、SGLang 或 TensorRT-LLM 部署企业自研大模型推理服务的工程师团队而言，NarrowSpec 具有直接的应用价值。企业目前在落地 EAGLE 或 DFlash 时往往因为显存紧张和草稿计算开销过大而放弃使用。应用 NarrowSpec 的思路，只需训练一个 1/2 宽度的超窄草稿头，配合算子离线折叠，无需投入昂贵算力即可在现有 GPU 集群上立刻榨取 15%~40% 的额外推理吞吐。
-
----
-
-#### 11. Measuring and Charging for Retained Context in Long-Context LLM Services
-- 中文译名：长上下文大模型服务中常驻 Context (KV Cache) 的计量与审计计费框架
-- 链接: https://arxiv.org/abs/2611.24071
-- 作者：Yi Lu, Qianshi Lin, Yumeng Yang, Hongxia Wang
-- 单位：南京审计大学 (Nanjing Audit University)
-- 分类：cs.PF, cs.CL
-- 方向标签：C. AI Infra (长上下文推理, KV Cache 常驻计费模型, 显存占用经济学, 多租户核算) & B. 编排与调度
-- 相关度：4.0/5
-
-1. 核心贡献：
-随着大模型上下文窗口向数十万乃至数百万 Token 迈进，长文本多轮对话、代码库级推理以及自主 Agent 工作流催生了云厂商的“上下文缓存（Context Caching）”技术。各大商业 API（如 OpenAI、Anthropic、Google Gemini）纷纷上线了针对缓存命中 Token 的打折计费。然而从系统与经济学角度看，现行的计量与计费标准极其粗糙：不管是哪一部分历史上下文、不管其对当前问答的实际质量贡献几何，所有常驻 Token 都被简单施加相同的固定折扣或费率。但在底层系统物理视角下，长序列前缀命中固然节省了高达两个数量级的 Prefill 算力，但持续占据昂贵 GPU HBM 的 KV Cache 块却带来了巨大的容量机会成本（Capacity Opportunity Cost）。来自南京审计大学的团队提出了**首个解耦内容相关度、可观测系统代理指标与可审计位置权重的三层计费审计框架**，为多租户长文本大模型基础设施建立了严谨的容量经济学模型。
-
-2. 原理解析：
-这就像在公有云 Kubernetes 集群中计算带持久卷（PV/PVC）的有状态容器租用成本：
-- **系统物理开销与粗暴账单的背离**：系统实测表明，在 65,536 Token 的长文本场景下，一旦触发前缀缓存命中（Cache Hit），重计算的计算开销暴跌两个数量级（超 100 倍！）；但如果用户维持了庞大上下文却以极低频度发起请求（冷常驻），其占据的物理显存块直接阻碍了其他并发 Batch 的分配，迫使集群频繁发生显存换出（Swap）或丢弃重算；
-- **解耦的三层审计框架**：
-  1. **内容相关层**：实验表明，文本内容的实质语义相关性完全主导了回答质量，传统依靠距离时间衰减（Distance Decay）给历史 Token 打折的假设在工程上并不成立；
-  2. **可观测系统代理层**：精确捕获 KV Cache 块的真实物理常驻时长、命中间隔与换出重传开销；
-  3. **可审计位置计费层**：建立有界、确定且公开透明的 Token 账单折算规则，让用户和平台方均可独立校验核算；
-- **非线性资费优化与尾部账单收敛**：通过校准后的计费模型仿真，在完全不降低云服务商整体收入与基础设施成本回收的前提下，将极端长会话用户的 P99 账单支出削减了 **31%~42%**，消除了异常账单突刺。
-
-3. 关键结论：
-- 通过对真实推理服务技术栈的物理打点测量，量化揭示了 64k 级别长上下文下计算节约与显存常驻约束之间的刚性边界；
-- 证明了线性均一的缓存打折在面对突发冷重发时会导致云平台承受亏损风险，而非线性动态资费方案能完美平衡平台 HBM 承载容量与多租户成本收益。
-
-4. 背景地位：
-该研究由南京审计大学统计与数据科学学院团队完成，入选计算机系统性能评价领域（cs.PF）。这是首篇从系统物理底层开销（KV Cache HBM 占用）严密推导长文本大模型经济计费模型的交叉力作。
-
-5. 落地相关性：
-对于在企业内部基于 Kubernetes 构建私有 AI 算力平台（通过 Chargeback 内部核算机制向各个业务部门计费）的平台架构师而言，这是极其宝贵的理论与工程依据。平台不能简单按照 Token 进出数量线性收费，必须把 KV Cache 占用显存的时间面积（Token $	imes$ Duration）纳入资源配额（Quota）与计费引擎中，从而倒逼业务层主动清理低价值上下文，防止少数恶劣应用霸占宝贵的 HBM 资源。
-
----
-
-#### 12. When Shuffling Fails: Token Recovery from Obfuscated KV Caches
-- 中文译名：当混淆失效时：从混淆 KV Cache 中窃取 Token 数据的侧信道重构攻击
-- 链接: https://arxiv.org/abs/2611.24276
-- 作者：Chengzhi Yi, Xiao Cheng, Wei Song, Haoyu Wang
-- 单位：华中科技大学 (HUST) 【知名实验室】、麦考瑞大学 (Macquarie University)、格里菲斯大学 (Griffith University)
-- 分类：cs.CR, cs.DC
-- 方向标签：C. AI Infra (多租户大模型服务, KV Cache 共享与卸载安全, 空间混部隔离缺陷, 隐私泄露攻击)
-- 相关度：4.0/5
-
-1. 核心贡献：
-为了应对大模型长文本推理中的显存容量墙，现代推理系统（如 vLLM、SGLang 及各类分布式推理池）广泛引入了将 KV Cache 块卸载至 Host 内存、跨节点共享传输或多租户池化复用的机制。但这带来了致命的隐私安全隐患：驻留在内存中的浮点张量直接暴露给基础设施运维人员或同机混部的恶意租户，极易被逆向还原出用户对话的私密内容。近期学术界与工业界提出了一类被称为“置换混淆（Shuffled Obfuscation）”的轻量防御机制（如知名开源防御方案 KV-Cloak、PermLLM），通过在 Cache Block 内部对各行进行秘密线性变换与随机重排，号称基于阶乘级（$b!$）的巨大置换群空间保证了绝对安全。华中科技大学与海外团队合作发表论文，揭示了该类方案底层存在致命的“输入对称性”理论缺陷，构造了 **Repeat-to-Reveal** 攻击，**在 GPU 物理环境下达成了 100% 窃取还原受害者私密 Token 的惊人破坏力！**
-
-2. 原理解析：
-这就像在多租户容器集群中，自以为做了内存随机洗牌就可以放心与其他租户共享共享内存（Shared Memory），却被精巧的探针探测出基底：
-- **致命的输入对称性漏洞（Input Symmetry）**：防御者宣称有 $b!$ 种洗牌状态，但这建立在输入各行完全相异的假设上。攻击者只需向模型发送精心构造的重复 Token 探测请求（Repeated-token Prompt），大模型第一层 Value 矩阵在整块 Cache Block 内部生成的所有行向量瞬间变得**完全相同**！无论防御系统如何置换重排，数据矩阵本身纹丝不动，庞大的置换群瞬间发生轨道坍缩（Orbit Collapse），有效状态空间从天文数字 $b!$ 骤降为仅仅 $b$ 个状态；
-- **代数差分反向去噪器求解（Repeat-to-Reveal）**：恶意租户只需利用自身探针收集这仅有的 $b$ 个可区分状态，利用一阶代数差分，无需破解防御方的任何秘密密钥，即可在线推导出一套完全等价的逆向去噪器（Equivalent Denoiser）；
-- **跨租户被动无感窃听（Cross-Tenant Stealing）**：只要防御系统在一段 Epoch 内复用参数，该去噪器即可直接迁移到任何其他受害租户的 Cache Block 上！通过公开大模型字典匹配，攻击者在后台默默监视内存中的混淆缓存块，即可近乎零开销地全量还原受害者输入的私密单词与提示词。
-
-3. 关键结论：
-- 在官方开源防御系统 **KV-Cloak**、PermLLM 以及相关方案上完整复现了该攻击；
-- 基于真实大模型对话数据集 WildChat 中的 3,000 个真实用户 Prompt、横跨 9 款主流开源大模型和 11 种硬件配置展开全方位打击实测；
-- 该攻击在 GPU 上实现了对防御秘密参数的高精度代数恢复，**Token 多重集（Token-multiset）的还原恢复率达到可怕的 100%**；
-- **KV-Cloak 官方研发团队已正式确认该致命漏洞**，并紧急开辟私有漏洞通报渠道邀请论文作者提交深度修复报告。
-
-4. 背景地位：
-来自华中科技大学网络空间安全学院与澳大利亚顶尖高校的系统安全与 AI 安全联合团队。该成果荣获计算机安全与系统顶级关注，彻底击碎了当前大模型推理系统在多租户 KV Cache 混部场景下依赖“纯软件轻量置换加密”的安全幻想。
-
-5. 落地相关性：
-对于在公有云 Kubernetes 或多租户私有集群中管理 GPU 算力、实施 KV Cache 跨节点共享与主机内存卸载（Host-offload）的基础设施安全团队而言，这是最高级别的警钟。文章明确指出：在没有基于硬件可信执行环境（TEE，如 NVIDIA H100/B200 Confidential Computing 机密计算）或硬件严格物理隔离的前提下，任何在软件层面对 KV Cache 做简单矩阵变换与置换的所谓“安全共享”，在侧信道攻击面前均形同虚设。处理金融、政务等涉密大模型业务时，跨租户严格禁止共享与落盘内存块是唯一的安全底线。
+#### 12. RoCoKV: Accelerating LLM Inference Serving through Uncertainty and Redundancy Aware KV Cache Compression
+- 中文译名：RoCoKV：基于不确定度与冗余感知的长思考推理模型 KV Cache 压缩加速系统
+- 链接：https://arxiv.org/abs/2611.25433
+- 作者：Payman Behnam, Elaheh Sobhani, Saad Amin, Yahya Hassan, Daniyal Khan, Biswadeep Chakraborty 等
+- 单位：佐治亚理工学院, 亚马逊 Annapurna Labs【工业界】, 谷歌【工业界】, 英特尔【工业界】
+- 分类：cs.CL, cs.DC
+- 方向标签：长思考推理模型 / vLLM 插件 / 融合 CUDA 核 / 动态 KV 压缩
+- 相关度：4.1 / 5.0
+1. **核心贡献**：专为 DeepSeek-R1、OpenAI o1 等长思考推理模型（LRM）量身定制的 KV Cache 压缩系统。敏锐捕捉到长思维链（CoT）生成中特有的“自我反思、循环验证与纠错冗余”，提出了不确定度引导的自适应剪枝与冗余感知 Token 选择算法，并作为即插即用插件深度集成入 vLLM 生产堆栈。
+2. **原理解析**：传统的 KV Cache 剪枝多面向通用对话任务（静态输入 Prompt 较长，输出较短）。但对于推理模型，其主要开销完全来自于模型自己“深度思考”生成的数万字思维链。在这些思考过程中，模型会产生大量循环甚至推翻重来的冗余 Token，但这些 Token 往往依然带有很高的局部注意力打分，导致传统方法不敢删除。RoCoKV 引入了两大机制：第一，监测模型的置信度/不确定度，在模型犹豫探索时分配更多内存保留完整分支，在模型确信时加大剪枝力度；第二，衡量 Token 与近期内容的冗余度，惩罚过度重复的自验证块。系统层面，团队开发了融合的三阶段 CUDA 解码内核，完整保留了 vLLM 的 PagedAttention 内存布局与 CUDA Graph 捕获能力。
+3. **关键结论**：在最严苛的 AIME25 数学推理基准以及长合成推理基准评测中，针对 DeepSeek-R1-Distill-Llama-8B 模型，RoCoKV 在显著压缩显存的同时，推理速度分别提升 1.27× 与 1.43×，吞吐量提升 38% 与 45%，且解题准确率全面优于现有的 SOTA 压缩算法（如 H2O、SnapKV）。
+4. **背景地位**：标志着推理系统的底层显存管理正在从“粗粒度黑盒”向“深度理解模型思维过程（Thinking Process）的认知感知型调度”进阶，由知名系统学者 Alexey Tumanov 实验室主导。
+5. **落地相关性**：系统以无侵入的 Drop-in Plugin 形式无缝接入工业界最常用的 vLLM 引擎，无需重新微调模型，非常适合希望降低 R1 思考模型线上服务成本的企业 AI 平台落地。
 
 ---
 
 ### 其他论文（相关度 ≤2）
 
-除上述入选深度解读的核心成果外，今日系统方向及交叉领域其余 29 篇候选论文在理论深度、专用场景或边缘领域各有探索，简要归纳如下供快速查阅：
+以下为今日追踪到的其余 26 篇论文，主要涵盖专用底层硬件（FPGA/PIM/RTL）、理论调度证明、通信信号、生物计算或密码算法等方向，按相关度简要归档备查：
 
-1. **Stephen: Verifying Sequencer-Aided Coordination Systems with Cross-View Prophecy**
-   - 链接: https://arxiv.org/abs/2611.23811 (cs.DC)
-   - 简介: 纽约大学与石溪大学团队提出 Stephen 形式化验证框架，利用跨视图预言变量验证定序器辅助共识系统（SAC，如 Corfu、NOPaxos），并在现有协议中发现丢失提交请求的严重 Bug。
-2. **Neural Memory Orchestration: End-to-End Learned Page Prefetching with Disaggregated Inference**
-   - 链接: https://arxiv.org/abs/2611.23857 (cs.DC, cs.OS)
-   - 简介: 探索在 HPC 与分层内存架构中利用分离式推理神经网络进行端到端内核换页预取，以替代传统启发式 Prefetcher。
-3. **Locality-Aware Scheduling for Stream Processing Applications in Serverless Environments**
-   - 链接: https://arxiv.org/abs/2611.23879 (cs.DC)
-   - 简介: 墨尔本大学 Buyya 团队推出 LcSched，在有状态 Serverless（FaaS）环境下针对流水线数据流进行本地性感知拓扑调度，降低跨函数通信时延。
-4. **LEDGE: An Efficient Simulator for Distributed LLM Serving on Heterogeneous Edge Devices**
-   - 链接: https://arxiv.org/abs/2611.24085 (cs.DC, cs.AI)
-   - 简介: UCI 与 UCSD 团队推出 LEDGE 仿真器，支持在高度异构边缘计算网络与动态拓扑下毫秒级仿真大模型分布式推理吞吐与部署排布。
-5. **eFAIR: Fair LLM Serving under Hourly Electricity Commitments**
-   - 链接: https://arxiv.org/abs/2611.24119 (cs.DC)
-   - 简介: 香港科技大学团队针对日前电力市场的小时级能耗预算承诺，提出兼顾长尾请求服务质量与未来电力预留的绿色大模型推理公平调度器。
-6. **Multilevel Graph Partitioning on GPU Supercomputers**
-   - 链接: https://arxiv.org/abs/2611.24264 (cs.DC)
-   - 简介: 宾州州立大学与桑迪亚国家实验室针对 GPU 超算集群实现高效多级图划分算法，大幅加速稀疏线性代数与科学计算网格分配。
-7. **Mine Locally, Verify Globally: Exact Recovery, Compilation, and Distortion of Mined Temporal Rules**
-   - 链接: https://arxiv.org/abs/2611.24902 (cs.DC, cs.NI)
-   - 简介: 提出在分布式网络轨迹挖掘中进行本地时序规则挖掘与全局验证的形式化框架，避免规则在聚合时发生失真。
-8. **Model Discovery for Virtual Chaos Engineering with Incomplete Tracing: An eBPF Study**
-   - 链接: https://arxiv.org/abs/2611.23313 (cs.SE, cs.DC)
-   - 简介: 俄罗斯 Innopolis 大学利用 eBPF 在无侵入且链路追踪缺失的遗留系统中自动化发现组件调用拓扑图，支撑虚拟混沌工程可用性预测。
-9. **Authenticating IoT Data on Ethereum after Pectra and Fusaka: A Cost Study of Signature Schemes, Batching and Anchoring for Agricultural Supply Chain Finance**
-   - 链接: https://arxiv.org/abs/2611.23764 (cs.CR, cs.DC)
-   - 简介: 评估以太坊 Pectra 升级后，物联网传感器数据采用批处理与密码学签名锚定至区块链的物理 Gas 开销与延迟。
-10. **Accelerating Distributed Digital Ising Machines**
-   - 链接: https://arxiv.org/abs/2611.23883 (cs.AR, cs.DC)
-   - 简介: 针对组合优化求解的分布式数字伊辛机（Ising Machine）提出专用硬件架构加速与跨节点通信压缩。
-11. **Training-Free Domain Generation for One-Shot Federated Learning with Server-Side Pre-trained Diffusion Models**
-   - 链接: https://arxiv.org/abs/2611.23908 (cs.AI, cs.DC)
-   - 简介: 利用服务端预训练扩散模型在免训练前提下生成跨域合成数据，化解单轮联邦学习中的数据异质性。
-12. **OpenGNS: An Open Dataset of the Gradient Noise Scale across Vision, Language, and Diffusion Models**
-   - 链接: https://arxiv.org/abs/2611.24331 (cs.LG, cs.DC)
-   - 简介: 开源包含视觉、语言和扩散模型在大规模分布式训练期间梯度噪声尺度（GNS）的数据集，指导并行 Batch Size 动态设定。
-13. **Dissecting an Unexplored SASS Control-Code Field: Barrier Exemption and Programmable Warp Priority**
-   - 链接: https://arxiv.org/abs/2611.24437 (cs.AR, cs.DC, cs.PF)
-   - 简介: 港科大（广州）与清华团队逆向分析 NVIDIA SASS 指令中未公开的控制码字段，揭露了障壁豁免与可编程 Warp 优先级的底层机制并提供二进制优化工具。
-14. **Efficient simulation of variational quantum circuits: representation, accuracy and CPU/GPU allocation**
-   - 链接: https://arxiv.org/abs/2611.24444 (quant-ph, cs.DC)
-   - 简介: 研究变分量子电路在异构 CPU/GPU 超算上的张量网络表示与计算资源动态分配。
-15. **Stealing Exact Training Data from Other Clients during Federated Learning**
-   - 链接: https://arxiv.org/abs/2611.24689 (cs.LG, cs.CR)
-   - 简介: 提出针对联邦学习恶意客户端的梯度逆向攻击，能够在无需中央服务器合谋的前提下直接精准还原其他客户端的私密训练图像。
-16. **DispersedBFT: Bottleneck-Free Primary-Backup Consensus using Dispersed Replication**
-   - 链接: https://arxiv.org/abs/2611.24833 (cs.DB, cs.DC)
-   - 简介: 提出利用纠删编码打散主备复制瓶颈的拜占庭容错共识协议 DispersedBFT，大幅压低 Leader 节点的网络带宽争用。
-17. **TTL Approximations for a Family of CLOCK-Like Cache Replacement Policies**
-   - 链接: https://arxiv.org/abs/2611.24549 (cs.OS, cs.PF)
-   - 简介: 针对类 CLOCK 缓存逐出算法族推导精确的生存时间（TTL）数学近似模型，助力操作系统内存页缓存分析。
-18. **blaris: Windowless Random-Access LZSS for Constrained Microcontrollers**
-   - 链接: https://arxiv.org/abs/2611.22900 (cs.AR, cs.OS)
-   - 简介: 为极度资源受限的微控制器设计无窗口、支持随机访问的轻量化 LZSS 解压缩引擎。
-19. **Plug-and-Play Sensor Evolution in Software-Defined Vehicles through Asset Administration Shells**
-   - 链接: https://arxiv.org/abs/2611.23298 (cs.SE, cs.OS)
-   - 简介: 基于工业资产管理壳（AAS）实现软件定义汽车车载传感器与操作系统驱动的即插即用与固件平滑升级。
-20. **Keeping Up with the Kernel: Can LLMs Adapt Linux Drivers to Interface Changes?**
-   - 链接: https://arxiv.org/abs/2611.24269 (cs.SE, cs.OS)
-   - 简介: 统计分析 Linux 内核 20 年来驱动接口的附带演进（Collateral Evolution），并提出评估 LLM 自动化迁移修复第三方外设驱动代码的 CoEvoBench 基准。
-21. **A Differential Theory of Quality-Resource Trade-offs for AI Model Selection: The Multiresource Frontier and Its Minimax Price**
-   - 链接: https://arxiv.org/abs/2611.23324 (stat.ML, cs.PF)
-   - 简介: 构建基于微分流形的大模型质量与多维硬件资源权衡数学理论，推导异构资源下模型选型的 Minimax 定价边界。
-22. **StatePortal: Agentic Checkpoint Synthesis for Testing Deep States in Interactive Software**
-   - 链接: https://arxiv.org/abs/2611.23257 (cs.SE, cs.AI)
-   - 简介: 利用智能体合成深层状态快照（Checkpoints），加速交互式软件与图形界面系统测试。
-23. **The Double Entropy Fit Index (DEFI): An Information-Theoretic Approach to Dimensionality Reduction and Clustering**
-   - 链接: https://arxiv.org/abs/2611.23523 (cs.IT)
-   - 简介: 基于信息论双重熵拟合指标指导高维数据降维与特征聚类。
-24. **FairPGT: Partitioned Graph Transformers for Dual-Level Fair Graph Clustering**
-   - 链接: https://arxiv.org/abs/2611.23631 (cs.LG, cs.AI)
-   - 简介: 面向图结构分区注意力机制，消除图聚类算法中对敏感属性人群的偏见。
-25. **Finetuning VLAs for Dexterous Manipulation: The Right Checkpoint Is All You Need**
-   - 链接: https://arxiv.org/abs/2611.23676 (cs.RO, cs.LG)
-   - 简介: 研究视觉-语言-动作（VLA）模型在灵巧机器手操作中的后训练 Checkpoint 选择策略。
-26. **Axion: A differentiable, GPU-native finite element framework, demonstrated on phase-field fracture**
-   - 链接: https://arxiv.org/abs/2611.23682 (cs.CE)
-   - 简介: 基于 JAX 构建的可微分、GPU 原生有限元计算框架，实现隐式牛顿迭代与力学仿真算子融合。
-27. **ReCIM-HD: A 40 nm On-Device Learning Accelerator with Hyperdimensional Computing via Importance-Based Hybrid Digital-ReRAM CIM**
-   - 链接: https://arxiv.org/abs/2611.23973 (cs.AR, cs.ET)
-   - 简介: 采用 40nm 工艺流片的存内计算（CIM）加速芯片，结合超维计算（HDC）实现免反向传播的高能效边缘在线学习。
-28. **Continuum: Boundary-State-Aware Deterministic Scheduling in Dynamic LEO Networks**
-   - 链接: https://arxiv.org/abs/2611.24021 (cs.NI)
-   - 简介: 针对低轨卫星星座（LEO）动态切换拓扑，提出边界状态感知的滚动窗口确定性确定时延调度算法。
-29. **Constructing Dynamic Conversations with Neural Back-channel Generation and Voice-line Scheduling**
-   - 链接: https://arxiv.org/abs/2611.24086 (cs.SD, cs.CL)
-   - 简介: 针对游戏音频双通道对话，提出基于神经网络的反馈音生成与语音轨道动态时序调度算法。
+1. **[2611.25947] Matching Architecture to Workload: Comparing RISC-V Parallel Accelerators for Energy-Efficient Embedded Computing**（cs.DC, cs.AR）- 嵌入式 RISC-V 并行加速器能效对比，侧重嵌入式边缘芯片。
+2. **[2611.26266] Cooling Noisy Population Protocols -- Vanishing-Gain Averaging and Localisation under Persistent Errors**（cs.DC）- 纯分布式理论算法，研究带有持续噪声的人口协议自适应收敛性。
+3. **[2611.26451] StarMPI-SVD: Distributed-Memory Parallel Star-M Tensor SVD**（cs.DC）- 面向分布式内存超级计算机的高阶张量 SVD 并行算法，偏传统 HPC/数值计算。
+4. **[2611.26526] Thinflow: Organizing HPC Benchmarking Campaigns as Rerunnable Directory Trees**（cs.DC）- 将 HPC 基准测试流程组织为可重跑目录树的自动化脚本工具，偏科研复现性辅助。
+5. **[2611.21943] Beyond 4: Improved Competitive Traveling Repairperson**（cs.DS, cs.DC）- 经典旅行修理工（Traveling Repairperson）在线竞争比理论证明。
+6. **[2611.25231] Release-Bound Withdrawal Authorization for Bitcoin Custody**（cs.CR, cs.DC）- 比特币托管中的限时提款授权密码学协议。
+7. **[2611.25301] SplitReAlign: Partition-Aware Representation Realignment for Split Federated Unlearning**（cs.LG, cs.CR, cs.DC）- 联邦拆分学习场景下的模型遗忘（Unlearning）表征重对齐算法。
+8. **[2611.26436] When lies look like noise: certifying untrusted entanglement swapping**（quant-ph, cs.DC）- 量子通信中不可信纠缠交换的噪声与作弊检测认证协议。
+9. **[2611.25206] Benchmarking Open-Source O-RAN and 5G NTN Stacks on Embedded ARM Platforms for Space Payloads**（cs.NI, cs.PF）- 面向低轨卫星与航天载荷的嵌入式 ARM 5G/O-RAN 协议栈基准评测。
+10. **[2611.24969] Global Importance Estimation for KV Cache Eviction**（cs.CL, cs.AI）- 基于 PageRank 估计 Token 全局重要性的 KV Cache 驱逐算法（PRKV），偏 NLP 启发式评估。
+11. **[2611.25073] PriTabICL: Differentially Private Tabular In-Context Learning with Task-Aligned Cluster-Wise Synthesis**（cs.CR, cs.LG）- 表格数据上下文学习的差分隐私合成方法。
+12. **[2611.25114] Fast and Memory-Light Evaluation of Density-Based Clusterings with the DISCO Index in R**（cs.LG, stat.CO）- R 语言中用于评估基于密度聚类指标的快速算法。
+13. **[2611.25293] Bottom-Up FPGA Reconfigurable Accelerator Overlay Generation**（cs.AR）- 针对 FPGA 硬件设计的自底向上可重构加速器覆层生成工具。
+14. **[2611.25386] A GPU Interior-Point Solver with Macro-Element Condensation for Equilibrium-Based Plasticity**（math.NA）- 固体力学弹塑性有限元分析的 GPU 内点法数值求解器。
+15. **[2611.25424] Coordinate Basis Linear Bandits with Sublinear Regret over Low-Rank Clusters**（cs.LG）- 理论机器学习：基于低秩聚类的高维线性多臂老虎机遗憾界分析。
+16. **[2611.25533] Compact MaxSAT Encodings for Balanced Waiting in B2B Meeting Scheduling**（cs.LO）- 用于 B2B 商务会议排程中等待时间均衡化的 MaxSAT 紧凑编码建模。
+17. **[2611.25617] Splice-Core: Low-Order-Bit-Splicing GEMM for Highly Energy-Efficient AI Inference Accelerators**（cs.AR）- 低阶位拼接专用 GEMM 电路结构设计，属于数字集成电路微架构范畴。
+18. **[2611.25664] GPU-Accelerated Secure Inference for Drug--Target Interaction Prediction**（cs.CR, cs.LG）- 用于药物靶点相互作用预测的安全多方计算与 GPU 加密计算加速。
+19. **[2611.25745] Verification Behavior Across Five Qwen2.5-Instruct Checkpoints**（cs.CL）- 针对 Qwen2.5 检查点在不同指令下验证行为与拒答能力的评测对比。
+20. **[2611.25953] Below Three: A 2.8027-Approximation for Moldable Precedence Scheduling**（cs.DS）- 具有前序依赖关系的同构多处理器作业调度的近似比理论算法证明。
+21. **[2611.25971] Kameleo: In-Situ Activation-Precision Selection for Bit-Serial LLM Accelerators**（cs.AR）- 针对位串行专用硬件加速器的在线激活精度动态切换架构。
+22. **[2611.26307] Scalable fault vulnerability analysis for ReRAM-based process-in-memory CNN accelerators**（cs.AR, cs.LG）- 忆阻器存算一体（ReRAM PIM）卷积加速器的故障脆弱性建模分析。
+23. **[2611.26472] FoldSim: Scaling Cycle-Exact RTL Simulation with Hierarchical Folding and Static Scheduling**（cs.AR）- 基于分层折叠与静态调度的硬件精确周期 RTL 仿真加速器。
+24. **[2611.26527] Thermal-Guided Ensemble Reinforcement Learning for Regime-Adaptive Short-Term GPU Power Forecasting in AI Data Centers**（eess.SY）- 智算中心 GPU 功耗短期预测的强化学习与热学约束模型，偏机房供电与微网控制。
+25. **[2611.25163] The low-degree sample complexity of clustering Gaussian mixtures with more groups than dimensions**（math.ST, cs.CC）- 统计学与计算复杂性：高斯混合模型聚类的低次多项式样本复杂度理论证明。
+26. **[2611.26270] Chance-Constrained Joint Beam Hopping Scheduling and Bandwidth Allocation for LEO Satellites**（eess.SP, eess.SY）- 低轨卫星通信中基于机会约束的联合跳波束调度与带宽分配。
 
 ---
 
 ### 今日趋势小结
 
-纵观今日（2026-11-20）系统方向入选的 41 篇文献，呈现出以下三大极具前瞻性的核心演进趋势：
+纵观今日 2026-11-21 的系统前沿研究，有三大强烈演进信号值得容器架构师、Kubernetes 开发者以及 AI Infra 工程师重点把握：
 
-1. **从粗粒度资源隔离下沉至微架构级争用治理**：
-   过去的系统研究往往将容器隔离与 GPU 分片视为黑盒（如依靠 cgroups 的配额限制或 CUDA Green Contexts / MIG 的 SM 切割）。但今日文献（如 UW-Madison 的 cgroup 基准测试、港科大与清华的 GPCPlace、港科大的 SASS 指令逆向）深刻证明，黑盒切分掩盖了底层共享硬件资源的恶劣冲突——无论是 CPU CFS 调度树中的 vruntime 抖动，还是 GPU 内 GPC 到 L2 Cache 交叉开关的物理端口串行排队。未来的云原生平台调度器必将具备更深层次的微架构感知能力，从指令排程和总线拓扑层面重塑真正的低时延硬隔离。
+1. **从“单体大模型推理”向“AI Agent 与长思考工作流系统支持”的范式跃迁**：
+   过去的系统优化集中在单次请求的首字延迟（TTFT）与每秒输出 Token 数（TPS）。而今日的 **Held While Waiting (AWS)**、**TripleKV (UIUC/IBM)** 与 **Aggron (UIUC/IBM)** 清晰表明，AI Agent 这种“多步推理 + 工具调用交互”的业务形态正在对云原生运行时发起猛烈冲击。高达 98% 的等待时间导致常驻沙箱（Pod/MicroVM）严重浪费内存，而其跨调用重用的巨大 KV Cache 则引发多级存储瓶颈。未来的容器编排与集群调度器必须引入感知工作流时延的动态内存分层与挂起机制。
 
-2. **从单请求孤立排队转向长链 Agent 与显存容量经济学**：
-   大语言模型服务正在从“单次短文本 Prompt”全面迈入“多轮迭代 Agent 闭环”与“百万级长文本上下文”时代。这使得传统的按 Token 或按单次 Request 计费与调度的系统假设全面失效。UIUC 的 Duru 将累积减速比作为调度与弹性扩缩容的核心信号；南京审计大学将常驻 KV Cache 占据 HBM 带来的容量机会成本纳入审计定价模型；华中科技大学揭示了多租户混部下共享 KV Cache 带来的严重侧信道安全漏洞。这标志着 AI Infra 系统研究正从单纯追求峰值吞吐，深度转向多租户长生命周期工作流的公平性、容量经济学与数据合规防御。
+2. **硬件闭源边界下的“外围控制”与虚拟化安全觉醒**：
+   在 GPU 共享与切分方面，**Berth (USC)** 给出了极其漂亮的答案：不再试图死磕或魔改不可控的底层闭源驱动与硬件微码，而是利用用户态外围拦截代理（Shim/Sidecar）精准控制任务投放与硬件时间切片，达成与专有切分相媲美的严格 SLO 保障；与此同时，**BlockJack** 首次将跨租户安全攻击延伸到了大模型推理的虚拟分页显存（PagedAttention）层，提醒我们多租户混部不仅是资源争用问题，更是数据隔离的系统安全防线。
 
-3. **异构协同、算子-通信重构与 Linux 内核现代化**：
-   在加速大模型推理与微调的主线上，“就地重用（In-situ Reuse）”与“异步反向卸载”展现出巨大威力。McGill/ETH/EPFL 的 BubbleTea 巧妙利用 MoE 专家并行的层级空闲气泡就地重用权重执行微调；AMD 的 KIWI 颠覆性证明了通过极简无锁通道向 CPU 进行反向卸载可以比 GPUDirect Async 更快；而在传统 OS 领域，eBPF 正以惊人的速度重塑现代 Linux 内核——罗格斯大学形式化证明的判空算子已被正式合并入 Linux 主线内核代码，彻底根治验证器死路径隐患；哥伦比亚大学与 IBM 的 Polymorph 更展示了结合 AI 与 eBPF 动态生成自适应调度器的广阔未来。
+3. **模型微架构创新与底层算子运行时的协同深度定制**：
+   从 DeepSeek 掀起的多头隐变量注意力（MLA）到分块稀疏注意力（MoBA），以及 Attention 与循环线性 RNN 杂合的 Hybrid 模型，今天涌现了 **AscMLA (中科大/快手)**、**Twindex (字节跳动)**、**LightningMoBA (腾讯)** 和 **TideCache (MIT 韩松团队)** 等一系列紧跟最新模型微架构演进的高水平系统工作。传统的通用推理框架已经不足以充分释放新硬件潜力，深度结合模型计算图特性的定制化缓存流式管理与低比特量化（如 FP4）正在成为企业 AI 算力降本增效的核心竞争力。
